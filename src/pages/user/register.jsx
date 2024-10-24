@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import Link from "next/link"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -199,6 +200,14 @@ export default function RegisterPageComponent() {
               </Button>
             </form>
           </Form>
+        </CardContent>
+        <CardContent>
+          <p className="text-center">
+            Already have an account?{" "}
+            <Link href="/user/login" className="text-orange-600 hover:underline">
+              Log in
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </div>
