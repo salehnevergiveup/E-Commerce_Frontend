@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAccessToken, refreshToken } from './authService';
+import { getAccessToken, refreshToken } from './auth-service';
 
 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -10,6 +10,7 @@ const authAxiosInstance = axios.create({
 
 const publicAxiosInstance = axios.create({
   baseURL: baseURL,
+  withCredentials: true,
 });
 
 const axiosClients = {
@@ -17,11 +18,7 @@ const axiosClients = {
   public: publicAxiosInstance,
 };
 
-publicAxiosInstance.interceptors.response.use(
-  (response) =>  {  console.log("request handled by public instances");  
-    return response; 
-  },
-)
+
 /**
  * Request interceptor for authAxiosInstance
  * Attaches the access token to each request if available
@@ -48,7 +45,7 @@ authAxiosInstance.interceptors.request.use(
  * Handles 401 errors by attempting to refresh the token
  */
 authAxiosInstance.interceptors.response.use(
-  (response) =>  {  console.log("request handled by authAxiosInstance");  
+  (response) =>  {  
     return response; 
   },
 
@@ -62,7 +59,7 @@ authAxiosInstance.interceptors.response.use(
     ) {
       originalRequest._retry = true; 
       try {
-        await refreshToken();
+        await refreshToken(); //setting up the new access token
         const newAccessToken = getAccessToken();
         if (newAccessToken) {
           originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
@@ -72,7 +69,6 @@ authAxiosInstance.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
-    console.log("sorry you are not authorized to this page");
 
     return Promise.reject(error);
   }

@@ -1,0 +1,371 @@
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/auth-context"; // Import useAuth
+import UserLayout from '@/layouts/user-layout';
+import AuthGuard from '@/components/auth-guard';
+
+import {
+  Pencil,
+  Phone,
+  MapPin,
+  Telescope,
+  Wallet,
+} from "lucide-react";
+import {
+  EnvelopeClosedIcon,
+  CalendarIcon,
+  MagnifyingGlassIcon,
+  ExclamationTriangleIcon,
+  ArrowRightIcon,
+} from "@radix-ui/react-icons";
+import sendRequest from "@/services/requests/request-service"; // Adjust the import path as needed
+import RequestMethods from "@/enums/request-methods";
+
+function ProfilePage() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [userDetails, setUserDetials] = useState(null);
+  const [balance, setBalance] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState(""); // Added state for search query
+
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      setLoading(true);
+      try {
+        const response = await sendRequest(
+          RequestMethods.GET,
+          `users/${user.id}`,
+          null,
+          true
+        );
+
+        if (response.success) {
+          setUserDetials(response.data);
+        } else {
+          console.error("Failed to fetch user data:", response.message);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const fetchBalance = async () => {
+    if (!user) return;
+    try {
+      const response = await sendRequest(
+        RequestMethods.GET,
+        `add the wallet endporint/${user.id} `,
+        null,
+        true
+      );
+      const data = await response.json();
+      if (data.success) {
+        setBalance(data.data);
+      } else {
+        console.error("Failed to fetch balance data:", data.message);
+      }
+    } catch (error) {
+      console.error("Error fetching balance data:", error);
+    }
+  };
+
+  const handleEdit = () => {
+    router.push(`/user/profile/edit`);
+  };
+
+
+
+  const getStatusColor = (status) => {
+    switch (status.toLowerCase()) {
+      case "active":
+        return "bg-green-500";
+      case "pending":
+        return "bg-orange-500";
+      case "inactive":
+        return "bg-gray-500";
+      case "suspended":
+        return "bg-red-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
+  if (loading) {
+    return <div className="container mx-auto px-4">Loading...</div>;
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-3">
+      <div className="relative h-48 bg-orange-600 rounded-t-lg mb-16">
+        <Image
+          src={userDetails.userCover ?? "/placeholder.svg"}
+          alt="Cover"
+          layout="fill"
+          className="object-cover rounded-t-lg"
+        />
+      </div>
+      <Card className="border-0 shadow-lg -mt-16">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-6">
+            <Avatar className="h-24 w-24 border-4 border-white">
+              <AvatarImage src={userDetails.avatar || "/placeholder.svg"} alt={userDetails.name} />
+              <AvatarFallback>{userDetails.name[0]}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">{userDetails.name}</h2>
+                  <p className="text-muted-foreground">@{userDetails.userName}</p>
+                </div>
+                <Button
+                  onClick={handleEdit}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit User
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className={`${getStatusColor(userDetails.status)} text-white`}>
+                  {userDetails.status}
+                </Badge>
+                <Badge variant="outline">{userDetails.roleType}</Badge>
+                <Badge variant="outline">{userDetails.roleName}</Badge>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      <div className="mt-6">
+        <Tabs
+          defaultValue="listings"
+          onValueChange={(value) => {
+            if (value === "balance") fetchBalance();
+          }}
+        >
+          <TabsList>
+            <TabsTrigger value="listings">Listings</TabsTrigger>
+            {userDetails.roleType.toLowerCase() === "user" && (
+              <TabsTrigger value="balance">Balance</TabsTrigger>
+            )}
+          </TabsList>
+
+          <TabsContent value="listings" className="mt-4">
+            {/* Search Input */}
+            <div className="flex items-center mb-4">
+              <div className="relative w-72">
+                <MagnifyingGlassIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search listings..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {userDetails.productList && userDetails.productList.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {userDetails.productList
+                  .filter((product) =>
+                    product.title
+                      .toLowerCase()
+                      .includes(searchQuery.toLowerCase())
+                  )
+                  .map((product) => (
+                    <Link href={`/user/products/view/${product.id}`} key={product.id}>
+                      <Card key={product.id}>
+                        <CardContent className="p-4">
+                          <Image
+                            src={product.image || "/placeholder.svg"}
+                            alt={product.title}
+                            width={300}
+                            height={200}
+                            className="w-full h-48 object-cover mb-4 rounded"
+                          />
+                          <h3 className="font-semibold mb-2">{product.title}</h3>
+                          <p className="text-lg font-bold mb-2">
+                            RM{product.price.toFixed(2)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Listed on{" "}
+                            {new Date(product.createdAt).toLocaleDateString()}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {product.refundGuaranteedDuration} days refund guarantee
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+              </div>
+            ) : (
+              <Card className="border-dashed">
+                <CardContent className="p-12 text-center">
+                  <div className="flex justify-center mb-4">
+                    <Telescope className="h-12 w-12 text-orange-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">
+                    @{userDetails.userName} has no Product yet.
+                  </h3>
+                  <p className="text-muted-foreground">
+                    Each of the Platform's users can sell and buy products.
+                    Chat with @{userDetails.userName} to find out more!
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {userDetails.roleType.toLowerCase() === "user" && (
+            <TabsContent value="balance" className="mt-4">
+              {/* Balance content remains unchanged */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Wallet className="mr-2 h-5 w-5 text-orange-600" />
+                      My Balance
+                    </div>
+                    <Button variant="link" className="text-orange-600">
+                      View withdrawal details
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <Card className="bg-gray-50">
+                    <CardContent className="p-4">
+                      <div className="flex items-start space-x-4">
+                        <ExclamationTriangleIcon className="h-5 w-5 text-orange-600 mt-1" />
+                        <div>
+                          <h4 className="font-semibold">
+                            Verify your identity to cash out
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            To transfer money into your bank account, you'll need
+                            to verify your identity as required by Malaysian
+                            government regulations
+                          </p>
+                          <Button
+                            variant="link"
+                            className="text-orange-600 px-0 mt-2"
+                          >
+                            Verify now
+                            <ArrowRightIcon className="ml-2 h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {balance ? (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          Available Balance
+                        </p>
+                        <p className="text-2xl font-bold">
+                          RM{balance.availableBalance.toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          On Hold Balance
+                        </p>
+                        <p className="text-2xl font-bold">
+                          RM{balance.onHoldBalance.toFixed(2)}
+                        </p>
+                      </div>
+                      <Button variant="outline">Withdraw</Button>
+                    </div>
+                  ) : (
+                    <p>Loading balance information...</p>
+                  )}
+
+                  <div>
+                    <h4 className="font-semibold mb-4">Transaction history</h4>
+                    <div className="text-center py-8">
+                      <Image
+                        src="/placeholder.svg"
+                        alt="Empty transactions"
+                        width={120}
+                        height={120}
+                        className="mx-auto mb-4"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Start selling with Carousell Protection and get money in
+                        your Balance!
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+        </Tabs>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Contact Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <EnvelopeClosedIcon className="h-4 w-4 text-orange-600" />
+              <span>{userDetails.email}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-orange-600" />
+              <span>{userDetails.phoneNumber}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Additional Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-orange-600" />
+              <span>{userDetails.billingAddress}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="h-4 w-4 text-orange-600" />
+              <span>
+                Joined {new Date(userDetails.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div >
+  );
+}
+
+ProfilePage.getLayout = function getLayout(page) {
+  return <UserLayout>{page}</UserLayout>;
+};
+
+
+// Wrap CheckoutPage with AuthGuard
+const WrappedCheckoutPage = AuthGuard(ProfilePage, { allowedRoles: ['user'] });
+
+// Ensure `getLayout` is passed along to the wrapped component
+WrappedCheckoutPage.getLayout = ProfilePage.getLayout;
+
+export default WrappedCheckoutPage;
