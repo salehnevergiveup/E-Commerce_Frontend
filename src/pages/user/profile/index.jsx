@@ -9,8 +9,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/auth-context"; // Import useAuth
-import UserLayout from '@/layouts/user-layout';
-import AuthGuard from '@/components/auth-guard';
+import UserLayout from "@/layouts/user-layout";
+import AuthGuard from "@/components/auth-guard";
+import WalletService from "@/services/wallet/wallet-service";
 
 import {
   Pencil,
@@ -18,6 +19,9 @@ import {
   MapPin,
   Telescope,
   Wallet,
+  DollarSignIcon,
+  DollarSign,
+  Banknote,
 } from "lucide-react";
 import {
   EnvelopeClosedIcon,
@@ -32,11 +36,29 @@ import RequestMethods from "@/enums/request-methods";
 function ProfilePage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [userDetails, setUserDetials] = useState(null);
-  const [balance, setBalance] = useState(null);
+  const [userDetails, setUserDetails] = useState(null);
+  const [balance, setBalance] = useState({
+    availableBalance: 0,
+    onHoldBalance: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(""); // Added state for search query
 
+  const loadBalance = async () => {
+    try {
+      const balanceData = await WalletService.fetchBalance();
+      if (balanceData.success) {
+        setBalance({
+          availableBalance: balanceData.data?.availableBalance || 0,
+          onHoldBalance: balanceData.data?.onHoldBalance || 0,
+        });
+      } else {
+        console.error("Failed to fetch balance data:", balanceData.message);
+      }
+    } catch (error) {
+      console.error("Failed to load balance:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -48,9 +70,8 @@ function ProfilePage() {
           null,
           true
         );
-
         if (response.success) {
-          setUserDetials(response.data);
+          setUserDetails(response.data);
         } else {
           console.error("Failed to fetch user data:", response.message);
         }
@@ -60,34 +81,26 @@ function ProfilePage() {
         setLoading(false);
       }
     };
-    fetchUser();
+
+    const initialize = async () => {
+      await fetchUser(); // Fetch user details first
+      await loadBalance(); // Then fetch balance if user is defined
+    };
+
+    initialize(); // Call initialize function when component is mounted
   }, []);
 
-  const fetchBalance = async () => {
-    if (!user) return;
+  const handleNavigateToTopUp = async () => {
     try {
-      const response = await sendRequest(
-        RequestMethods.GET,
-        `add the wallet endporint/${user.id} `,
-        null,
-        true
-      );
-      const data = await response.json();
-      if (data.success) {
-        setBalance(data.data);
-      } else {
-        console.error("Failed to fetch balance data:", data.message);
-      }
+      await WalletService.navigateToTopUp(router);
     } catch (error) {
-      console.error("Error fetching balance data:", error);
+      console.error("Error navigating to top-up page:", error);
     }
   };
 
   const handleEdit = () => {
     router.push(`/user/profile/edit`);
   };
-
-
 
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
@@ -122,14 +135,19 @@ function ProfilePage() {
         <CardContent className="p-6">
           <div className="flex items-start gap-6">
             <Avatar className="h-24 w-24 border-4 border-white">
-              <AvatarImage src={userDetails.avatar || "/placeholder.svg"} alt={userDetails.name} />
+              <AvatarImage
+                src={userDetails.avatar || "/placeholder.svg"}
+                alt={userDetails.name}
+              />
               <AvatarFallback>{userDetails.name[0]}</AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold">{userDetails.name}</h2>
-                  <p className="text-muted-foreground">@{userDetails.userName}</p>
+                  <p className="text-muted-foreground">
+                    @{userDetails.userName}
+                  </p>
                 </div>
                 <Button
                   onClick={handleEdit}
@@ -140,7 +158,9 @@ function ProfilePage() {
                 </Button>
               </div>
               <div className="flex items-center gap-2">
-                <Badge className={`${getStatusColor(userDetails.status)} text-white`}>
+                <Badge
+                  className={`${getStatusColor(userDetails.status)} text-white`}
+                >
                   {userDetails.status}
                 </Badge>
                 <Badge variant="outline">{userDetails.roleType}</Badge>
@@ -154,7 +174,7 @@ function ProfilePage() {
         <Tabs
           defaultValue="listings"
           onValueChange={(value) => {
-            if (value === "balance") fetchBalance();
+            if (value === "balance") loadBalance();
           }}
         >
           <TabsList>
@@ -187,7 +207,10 @@ function ProfilePage() {
                       .includes(searchQuery.toLowerCase())
                   )
                   .map((product) => (
-                    <Link href={`/user/products/view/${product.id}`} key={product.id}>
+                    <Link
+                      href={`/user/products/view/${product.id}`}
+                      key={product.id}
+                    >
                       <Card key={product.id}>
                         <CardContent className="p-4">
                           <Image
@@ -197,7 +220,9 @@ function ProfilePage() {
                             height={200}
                             className="w-full h-48 object-cover mb-4 rounded"
                           />
-                          <h3 className="font-semibold mb-2">{product.title}</h3>
+                          <h3 className="font-semibold mb-2">
+                            {product.title}
+                          </h3>
                           <p className="text-lg font-bold mb-2">
                             RM{product.price.toFixed(2)}
                           </p>
@@ -206,7 +231,8 @@ function ProfilePage() {
                             {new Date(product.createdAt).toLocaleDateString()}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {product.refundGuaranteedDuration} days refund guarantee
+                            {product.refundGuaranteedDuration} days refund
+                            guarantee
                           </p>
                         </CardContent>
                       </Card>
@@ -223,8 +249,8 @@ function ProfilePage() {
                     @{userDetails.userName} has no Product yet.
                   </h3>
                   <p className="text-muted-foreground">
-                    Each of the Platform's users can sell and buy products.
-                    Chat with @{userDetails.userName} to find out more!
+                    Each of the Platform's users can sell and buy products. Chat
+                    with @{userDetails.userName} to find out more!
                   </p>
                 </CardContent>
               </Card>
@@ -241,8 +267,12 @@ function ProfilePage() {
                       <Wallet className="mr-2 h-5 w-5 text-orange-600" />
                       My Balance
                     </div>
-                    <Button variant="link" className="text-orange-600">
-                      View withdrawal details
+                    <Button
+                      onClick={handleNavigateToTopUp} //call the backend session here
+                      className="bg-orange-600 hover:bg-orange-700 flex items-center"
+                    >
+                      <DollarSign className="mr-2 h-4 w-4" />
+                      Top Up Wallet
                     </Button>
                   </CardTitle>
                 </CardHeader>
@@ -256,9 +286,9 @@ function ProfilePage() {
                             Verify your identity to cash out
                           </h4>
                           <p className="text-sm text-muted-foreground">
-                            To transfer money into your bank account, you'll need
-                            to verify your identity as required by Malaysian
-                            government regulations
+                            To transfer money into your bank account, you'll
+                            need to verify your identity as required by
+                            Malaysian government regulations
                           </p>
                           <Button
                             variant="link"
@@ -273,24 +303,46 @@ function ProfilePage() {
                   </Card>
 
                   {balance ? (
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          Available Balance
-                        </p>
-                        <p className="text-2xl font-bold">
-                          RM{balance.availableBalance.toFixed(2)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          On Hold Balance
-                        </p>
-                        <p className="text-2xl font-bold">
-                          RM{balance.onHoldBalance.toFixed(2)}
-                        </p>
-                      </div>
-                      <Button variant="outline">Withdraw</Button>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {/* Available Balance Card */}
+                      <Card
+                        className={`${
+                          balance.availableBalance > 0
+                            ? "bg-green-50 border-green-500"
+                            : "bg-red-50 border-red-500"
+                        } border`}
+                      >
+                        <CardHeader>
+                          <CardTitle className="flex items-center justify-between">
+                            <span>Available Balance</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold text-black">
+                            RM{balance.availableBalance.toFixed(2)}
+                          </p>
+                          {balance.availableBalance <= 0 && (
+                            <p className="text-sm text-red-600 mt-2">
+                              Please remember top up your wallet before
+                              purchasing items
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* On Hold Balance Card */}
+                      <Card className="bg-yellow-50 border-yellow-500 border">
+                        <CardHeader>
+                          <CardTitle className="flex items-center justify-between">
+                            <span>On Hold Balance</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold text-black">
+                            RM{balance.onHoldBalance.toFixed(2)}
+                          </p>
+                        </CardContent>
+                      </Card>
                     </div>
                   ) : (
                     <p>Loading balance information...</p>
@@ -352,8 +404,10 @@ function ProfilePage() {
             </div>
           </CardContent>
         </Card>
+
+        <button>Transfer</button>
       </div>
-    </div >
+    </div>
   );
 }
 
@@ -361,9 +415,8 @@ ProfilePage.getLayout = function getLayout(page) {
   return <UserLayout>{page}</UserLayout>;
 };
 
-
 // Wrap CheckoutPage with AuthGuard
-const WrappedCheckoutPage = AuthGuard(ProfilePage, { allowedRoles: ['user'] });
+const WrappedCheckoutPage = AuthGuard(ProfilePage, { allowedRoles: ["user"] });
 
 // Ensure `getLayout` is passed along to the wrapped component
 WrappedCheckoutPage.getLayout = ProfilePage.getLayout;

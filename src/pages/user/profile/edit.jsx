@@ -27,7 +27,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Pencil, Upload, Trash, Eye, EyeOff, ArrowLeft, AlertTriangle } from "lucide-react";
+import {
+  Pencil,
+  Upload,
+  Trash,
+  Eye,
+  EyeOff,
+  ArrowLeft,
+  AlertTriangle,
+} from "lucide-react";
 
 import sendRequest from "@/services/requests/request-service"; // Ensure correct path
 import RequestMethods from "@/enums/request-methods"; // Ensure correct path
@@ -328,7 +336,9 @@ function EditProfilePage() {
           </DialogTrigger>
           <DialogContent className="bg-white">
             <DialogHeader>
-              <DialogTitle className="text-center">Upload Cover Image</DialogTitle>
+              <DialogTitle className="text-center">
+                Upload Cover Image
+              </DialogTitle>
             </DialogHeader>
             <div className="flex items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
               <label htmlFor="cover-upload" className="cursor-pointer">
@@ -384,7 +394,10 @@ function EditProfilePage() {
                   </AvatarFallback>
                 )}
               </Avatar>
-              <Dialog open={avatarDialogOpen} onOpenChange={setAvatarDialogOpen}>
+              <Dialog
+                open={avatarDialogOpen}
+                onOpenChange={setAvatarDialogOpen}
+              >
                 <DialogTrigger asChild>
                   <Button
                     variant="secondary"
@@ -396,7 +409,9 @@ function EditProfilePage() {
                 </DialogTrigger>
                 <DialogContent className="bg-white">
                   <DialogHeader>
-                    <DialogTitle className="text-center">Upload Avatar</DialogTitle>
+                    <DialogTitle className="text-center">
+                      Upload Avatar
+                    </DialogTitle>
                   </DialogHeader>
                   <div className="flex items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
                     <label htmlFor="avatar-upload" className="cursor-pointer">
@@ -594,9 +609,7 @@ function EditProfilePage() {
                         variant="ghost"
                         size="icon"
                         className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                        onClick={() =>
-                          setShowCurrentPassword((prev) => !prev)
-                        }
+                        onClick={() => setShowCurrentPassword((prev) => !prev)}
                         type="button"
                       >
                         {showCurrentPassword ? (
@@ -654,9 +667,7 @@ function EditProfilePage() {
                         variant="ghost"
                         size="icon"
                         className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                        onClick={() =>
-                          setShowConfirmPassword((prev) => !prev)
-                        }
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
                         type="button"
                       >
                         {showConfirmPassword ? (
@@ -689,21 +700,31 @@ function EditProfilePage() {
       </Tabs>
 
       {/* Confirmation Dialog for Deleting Account */}
-      <AlertDialog open={deleteUserId !== null} onOpenChange={() => setDeleteUserId(null)}>
+      <AlertDialog
+        open={deleteUserId !== null}
+        onOpenChange={() => setDeleteUserId(null)}
+      >
         <AlertDialogContent className="bg-white text-center space-y-4">
           <AlertDialogHeader className="flex flex-col items-center gap-2">
-            <AlertDialogTitle className="text-center">Delete User</AlertDialogTitle>
+            <AlertDialogTitle className="text-center">
+              Delete User
+            </AlertDialogTitle>
             <AlertTriangle className="h-10 w-10 text-red-500" />
             <AlertDialogDescription className="text-center text-sm">
-              This action cannot be undone. This will permanently delete the user account
-              and remove their data from our servers.
+              This action cannot be undone. This will permanently delete the
+              user account and remove their data from our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="sm:flex-col space-y-2">
-            <AlertDialogAction className="bg-red-600 hover:bg-red-700 w-full" onClick={confirmDelete}>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 w-full"
+              onClick={confirmDelete}
+            >
               Delete
             </AlertDialogAction>
-            <AlertDialogCancel className="w-full mt-2">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="w-full mt-2">
+              Cancel
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
