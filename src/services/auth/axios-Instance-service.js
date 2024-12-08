@@ -2,7 +2,6 @@ import axios from 'axios';
 import { getAccessToken, refreshToken } from './auth-service';
 
 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
-const baseURLPublic = process.env.NEXT_PUBLIC_API_BASE_URL_Public; 
 
 const authAxiosInstance = axios.create({
   baseURL: baseURL,
@@ -10,7 +9,7 @@ const authAxiosInstance = axios.create({
 });
 
 const publicAxiosInstance = axios.create({
-  baseURL: baseURLPublic,
+  baseURL: baseURL,
   withCredentials: true,
 });
 
