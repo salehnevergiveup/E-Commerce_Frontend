@@ -41,6 +41,12 @@ function ProfilePage() {
     availableBalance: 0,
     onHoldBalance: 0,
   });
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const notificationsPerPage = 10;
+
+  //const [notifications, setNotifications] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(""); // Added state for search query
 
@@ -57,6 +63,43 @@ function ProfilePage() {
       }
     } catch (error) {
       console.error("Failed to load balance:", error);
+    }
+  };
+
+  const [notifications, setNotifications] = useState([]);
+
+  const loadNotifications = async () => {
+    try {
+      const response = await sendRequest(
+        RequestMethods.GET,
+        "notifications/users/all",
+        null,
+        true
+      );
+      if (response.success) {
+        setNotifications(response.data); // Update the notifications state
+        console.log("test test test" + response);
+      } else {
+        console.error("Failed to fetch notifications:", response.message);
+        console.log("test test test" + JSON.stringify(response));
+      }
+    } catch (error) {
+      console.error("Error loading notifications:", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      // Placeholder for marking all notifications as read
+      await fetch("/api/notifications/mark-all-read", { method: "POST" });
+      setNotifications((prevNotifications) =>
+        prevNotifications.map((notification) => ({
+          ...notification,
+          isRead: true,
+        }))
+      );
+    } catch (error) {
+      console.error("Error marking notifications as read:", error);
     }
   };
 
@@ -85,6 +128,7 @@ function ProfilePage() {
     const initialize = async () => {
       await fetchUser(); // Fetch user details first
       await loadBalance(); // Then fetch balance if user is defined
+      await loadNotifications();
     };
 
     initialize(); // Call initialize function when component is mounted
@@ -115,6 +159,26 @@ function ProfilePage() {
       default:
         return "bg-gray-500";
     }
+  };
+
+  const totalPages = Math.ceil(notifications.length / notificationsPerPage);
+  const indexOfLastNotification = currentPage * notificationsPerPage;
+  const indexOfFirstNotification =
+    indexOfLastNotification - notificationsPerPage;
+  const currentNotifications = notifications.slice(
+    indexOfFirstNotification,
+    indexOfLastNotification
+  );
+
+  const handlePageChange = (direction) => {
+    setCurrentPage((prevPage) => {
+      if (direction === "next" && prevPage < totalPages) {
+        return prevPage + 1;
+      } else if (direction === "prev" && prevPage > 1) {
+        return prevPage - 1;
+      }
+      return prevPage;
+    });
   };
 
   if (loading) {
@@ -175,6 +239,7 @@ function ProfilePage() {
           defaultValue="listings"
           onValueChange={(value) => {
             if (value === "balance") loadBalance();
+            if (value === "notifications") loadNotifications();
           }}
         >
           <TabsList>
@@ -182,6 +247,8 @@ function ProfilePage() {
             {userDetails.roleType.toLowerCase() === "user" && (
               <TabsTrigger value="balance">Balance</TabsTrigger>
             )}
+            <TabsTrigger value="notifications">Notifications</TabsTrigger>{" "}
+            {/* Add Notifications Tab */}
           </TabsList>
 
           <TabsContent value="listings" className="mt-4">
@@ -368,6 +435,78 @@ function ProfilePage() {
               </Card>
             </TabsContent>
           )}
+          <TabsContent value="notifications" className="mt-4">
+            <Card className="shadow-md">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-xl font-bold">
+                    Notifications
+                  </CardTitle>
+                  <Button
+                    onClick={markAllAsRead}
+                    className="bg-orange-600 hover:bg-orange-700 flex items-center"
+                  >
+                    Mark All as Read
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {notifications.length > 0 ? (
+                  <div className="space-y-4">
+                    {currentNotifications.map((notification) => (
+                      <Card
+                        key={notification.notificationId}
+                        className={`border ${
+                          notification.isRead ? "bg-gray-50" : "bg-orange-50"
+                        }`}
+                      >
+                        <CardHeader>
+                          <CardTitle className="font-bold">
+                            {notification.title}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p>{notification.messageText}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Sent by: {notification.senderUsername} on{" "}
+                            {new Date(notification.createdAt).toLocaleString()}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    <div className="flex justify-between items-center mt-4">
+                      <Button
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                      >
+                        Previous
+                      </Button>
+                      <span>
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <Button
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Card className="border-dashed">
+                    <CardContent className="p-12 text-center">
+                      <div className="flex justify-center mb-4">
+                        <Telescope className="h-12 w-12 text-orange-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">
+                        No Notifications Found
+                      </h3>
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
       <div className="grid gap-4 md:grid-cols-2 mt-6">
