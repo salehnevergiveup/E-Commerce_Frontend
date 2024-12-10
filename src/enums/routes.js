@@ -9,6 +9,9 @@ const Routes = Object.freeze({
     REFRESH_TOKEN: 'refresh-token',
     User: 'user',
     Admin: 'admin',
+    SHOPPINGCART:'shoppingcart',
+    CartItems:"cartitems",
+    BuyerItem:'buyer-item'
   });
   
   export default Routes;

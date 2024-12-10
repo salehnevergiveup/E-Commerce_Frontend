@@ -35,15 +35,20 @@ export async function sendRequest(method, url, payload = null, requireAuth = fal
 
   try {
     const response = await requestClient(requestData);
+    if (!response || !response.data) {
+      console.warn("Response data is null or undefined.");
+      return null;
+    }
     return response.data;
   } catch (error) {
+    if (error.response?.data) {
     if (error.response?.data) {
       return {
         error: true,
         message: error.response.data.message || 'Server Error',
         status: error.response.status,
       };
-    } else if (error.request) {
+    } else if (error.response) {
       return {
         error: true,
         message: 'Network Error. No response received from server.',
@@ -89,4 +94,7 @@ export async function sendRequestTest(method, url, payload = null, requireAuth =
     data: processedData,
   };
 }
-export default sendRequest; //
+
+}
+
+export default sendRequest; 

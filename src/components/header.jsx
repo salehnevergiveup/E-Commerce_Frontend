@@ -2,11 +2,13 @@ import React from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import NavbarCartComponent from "@/components/navbar-cart";
-import ProfileMenu from "@/components/profile-menu";
-import { LogOut, Bell, User } from "lucide-react";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {Logout, Bell, User, ListIcon, ShoppingBag, Wallet, History } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,13 +100,11 @@ export default function Header() {
     }
   }, [isAuthenticated]);
 
-  // Function to open the login dialog and close the register dialog
   const openLoginDialog = () => {
     setLoginDialogOpen(true); // Open the login dialog
     setRegisterDialogOpen(false); // Close the register dialog
   };
 
-  // Function to open the register dialog and close the login dialog
   const openRegisterDialog = () => {
     setLoginDialogOpen(false); // Close the login dialog
     setRegisterDialogOpen(true); // Open the register dialog
@@ -115,15 +115,13 @@ export default function Header() {
     router.push(`/notifications/${notificationId}`);
   };
 
-  // Function to handle logout
   const handleLogout = () => {
-    logout(); // Call the logout function from AuthContext
+    logout();
   };
 
   return (
     <header className="border-b">
       <div className="container flex h-16 items-center justify-between px-4">
-        {/* Left Side */}
         <div className="flex items-center gap-6">
           <Link href="/" className="text-2xl font-bold text-orange-600">
             Potato-Trade
@@ -137,10 +135,8 @@ export default function Header() {
 
         {/* Right Side */}
         <div className="flex items-center gap-2">
-          {/* Elements Visible Only When Not Authenticated */}
           {!isAuthenticated && (
             <>
-              {/* Login Dialog */}
               <Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="ghost">Login</Button>
@@ -179,7 +175,6 @@ export default function Header() {
           {/* Elements Visible Only When Authenticated */}
           {isAuthenticated && (
             <>
-              {/* Navbar Cart Component */}
               <NavbarCartComponent />
 
               {/* Notifications Dropdown */}
@@ -248,18 +243,50 @@ export default function Header() {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-
-              {/* User Profile Dropdown */}
+    
+              <DropdownMenu>
               <ProfileMenu profileLink={"/user/profile"} />
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <ListIcon className="mr-2 h-4 w-4" />
+                    <span>My Listings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <ShoppingBag className="mr-2 h-4 w-4" />
+                    <span>Buy Product</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    <span>Wallet</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/purchase-order/my-purchase" className="flex items-center">
+                      <History className="mr-2 h-4 w-4" />
+                      <span>My Purchases History</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           )}
         </div>
       </div>
 
-      {/* Optional: Show a loading indicator while authentication state is being determined */}
       {loading && (
         <div className="w-full text-center p-2 bg-gray-100">Loading...</div>
       )}
     </header>
   );
 }
+
