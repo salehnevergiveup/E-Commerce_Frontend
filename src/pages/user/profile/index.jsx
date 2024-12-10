@@ -1,3 +1,5 @@
+// pages/user/profile.jsx
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -8,10 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/auth-context"; // Import useAuth
+import { useAuth } from "@/contexts/auth-context";
 import UserLayout from "@/layouts/user-layout";
 import AuthGuard from "@/components/auth-guard";
 import WalletService from "@/services/wallet/wallet-service";
+import { ReviewCard } from "@/components/review-card"; // Import the ReviewCard component
 
 import {
   Pencil,
@@ -30,7 +33,7 @@ import {
   ExclamationTriangleIcon,
   ArrowRightIcon,
 } from "@radix-ui/react-icons";
-import sendRequest from "@/services/requests/request-service"; // Adjust the import path as needed
+import sendRequest from "@/services/requests/request-service";
 import RequestMethods from "@/enums/request-methods";
 
 function ProfilePage() {
@@ -45,10 +48,10 @@ function ProfilePage() {
 
   const notificationsPerPage = 10;
 
-  //const [notifications, setNotifications] = useState([]);
-
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState(""); // Added state for search query
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [reviews, setReviews] = useState([]); // State to hold reviews
 
   const loadBalance = async () => {
     try {
@@ -66,8 +69,6 @@ function ProfilePage() {
     }
   };
 
-  const [notifications, setNotifications] = useState([]);
-
   const loadNotifications = async () => {
     try {
       const response = await sendRequest(
@@ -77,14 +78,33 @@ function ProfilePage() {
         true
       );
       if (response.success) {
-        setNotifications(response.data); // Update the notifications state
-        console.log("test test test" + response);
+        setNotifications(response.data);
+        console.log("Notifications fetched:", response.data);
       } else {
         console.error("Failed to fetch notifications:", response.message);
-        console.log("test test test" + JSON.stringify(response));
+        console.log("Response:", JSON.stringify(response));
       }
     } catch (error) {
       console.error("Error loading notifications:", error);
+    }
+  };
+
+  const loadReviews = async () => {
+    try {
+      const response = await sendRequest(
+        RequestMethods.GET,
+        `/review/${user.id}?type=saler`, // Adjust the endpoint as per your backend API
+        // Adjust the endpoint as per your backend API
+        null,
+        true
+      );
+      if (response.success) {
+        setReviews(response.data); // Assuming response.data is an array of ReviewDTO
+      } else {
+        console.error("Failed to fetch reviews:", response.message);
+      }
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
     }
   };
 
@@ -126,13 +146,16 @@ function ProfilePage() {
     };
 
     const initialize = async () => {
-      await fetchUser(); // Fetch user details first
-      await loadBalance(); // Then fetch balance if user is defined
+      await fetchUser();
+      await loadBalance();
       await loadNotifications();
+      await loadReviews(); // Fetch reviews on initialization
     };
 
-    initialize(); // Call initialize function when component is mounted
-  }, []);
+    if (user) {
+      initialize();
+    }
+  }, [user]);
 
   const handleNavigateToTopUp = async () => {
     try {
@@ -147,7 +170,7 @@ function ProfilePage() {
   };
 
   const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case "active":
         return "bg-green-500";
       case "pending":
@@ -160,6 +183,8 @@ function ProfilePage() {
         return "bg-gray-500";
     }
   };
+
+  const [notifications, setNotifications] = useState([]);
 
   const totalPages = Math.ceil(notifications.length / notificationsPerPage);
   const indexOfLastNotification = currentPage * notificationsPerPage;
@@ -185,30 +210,56 @@ function ProfilePage() {
     return <div className="container mx-auto px-4">Loading...</div>;
   }
 
+  if (!userDetails) {
+    return (
+      <div className="container mx-auto px-4">
+        <p>User details not found.</p>
+      </div>
+    );
+  }
+
+  // Extract avatar and cover media from userDetails.medias
+  const avatarMedia = userDetails.medias
+    ? userDetails.medias.find((media) => media.type === "User_Profile")
+    : null;
+  const coverMedia = userDetails.medias
+    ? userDetails.medias.find((media) => media.type === "User_Cover")
+    : null;
+
+  // Determine the cover image source
+  const coverSrc = coverMedia && coverMedia.mediaUrl ? coverMedia.mediaUrl : "/placeholder.svg";
+
+  // Determine the avatar image source
+  const avatarSrc = avatarMedia && avatarMedia.mediaUrl ? avatarMedia.mediaUrl : "/placeholder.svg";
+
   return (
     <div className="container mx-auto px-4 py-3">
+      {/* Cover Image */}
       <div className="relative h-48 bg-orange-600 rounded-t-lg mb-16">
-        <Image
-          src={userDetails.userCover ?? "/placeholder.svg"}
-          alt="Cover"
-          layout="fill"
-          className="object-cover rounded-t-lg"
-        />
+        <div className="absolute inset-0">
+          <Image
+            src={coverSrc}
+            alt="Cover"
+            layout="fill"
+            className="object-cover rounded-t-lg"
+          />
+        </div>
       </div>
+
+      {/* User Info Card */}
       <Card className="border-0 shadow-lg -mt-16">
         <CardContent className="p-6">
           <div className="flex items-start gap-6">
             <Avatar className="h-24 w-24 border-4 border-white">
-              <AvatarImage
-                src={userDetails.avatar || "/placeholder.svg"}
-                alt={userDetails.name}
-              />
-              <AvatarFallback>{userDetails.name[0]}</AvatarFallback>
+              <AvatarImage src={avatarSrc} alt={userDetails.name || "User Avatar"} />
+              <AvatarFallback>
+                {userDetails.name ? userDetails.name.charAt(0).toUpperCase() : "U"}
+              </AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">{userDetails.name}</h2>
+                  <h2 className="text-2xl font-bold">{userDetails.name || "No Name"}</h2>
                   <p className="text-muted-foreground">
                     @{userDetails.userName}
                   </p>
@@ -218,7 +269,7 @@ function ProfilePage() {
                   className="bg-orange-600 hover:bg-orange-700"
                 >
                   <Pencil className="mr-2 h-4 w-4" />
-                  Edit User
+                  Edit Profile
                 </Button>
               </div>
               <div className="flex items-center gap-2">
@@ -227,104 +278,35 @@ function ProfilePage() {
                 >
                   {userDetails.status}
                 </Badge>
-                <Badge variant="outline">{userDetails.roleType}</Badge>
-                <Badge variant="outline">{userDetails.roleName}</Badge>
+                <Badge variant="outline">{userDetails.roleType || "N/A"}</Badge>
+                <Badge variant="outline">{userDetails.roleName || "N/A"}</Badge>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Tabs Section */}
       <div className="mt-6">
         <Tabs
-          defaultValue="listings"
+          defaultValue="balance"
           onValueChange={(value) => {
             if (value === "balance") loadBalance();
             if (value === "notifications") loadNotifications();
+            if (value === "reviews") loadReviews(); // Load reviews when the tab is selected
           }}
         >
           <TabsList>
-            <TabsTrigger value="listings">Listings</TabsTrigger>
-            {userDetails.roleType.toLowerCase() === "user" && (
+            {/* Removed Listings Tab */}
+            {userDetails.roleType && userDetails.roleType.toLowerCase() === "user" && (
               <TabsTrigger value="balance">Balance</TabsTrigger>
             )}
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>{" "}
-            {/* Add Notifications Tab */}
+            <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            <TabsTrigger value="reviews">Reviews</TabsTrigger> {/* Added Reviews Tab */}
           </TabsList>
 
-          <TabsContent value="listings" className="mt-4">
-            {/* Search Input */}
-            <div className="flex items-center mb-4">
-              <div className="relative w-72">
-                <MagnifyingGlassIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search listings..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {userDetails.productList && userDetails.productList.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {userDetails.productList
-                  .filter((product) =>
-                    product.title
-                      .toLowerCase()
-                      .includes(searchQuery.toLowerCase())
-                  )
-                  .map((product) => (
-                    <Link
-                      href={`/user/products/view/${product.id}`}
-                      key={product.id}
-                    >
-                      <Card key={product.id}>
-                        <CardContent className="p-4">
-                          <Image
-                            src={product.image || "/placeholder.svg"}
-                            alt={product.title}
-                            width={300}
-                            height={200}
-                            className="w-full h-48 object-cover mb-4 rounded"
-                          />
-                          <h3 className="font-semibold mb-2">
-                            {product.title}
-                          </h3>
-                          <p className="text-lg font-bold mb-2">
-                            RM{product.price.toFixed(2)}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Listed on{" "}
-                            {new Date(product.createdAt).toLocaleDateString()}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {product.refundGuaranteedDuration} days refund
-                            guarantee
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
-              </div>
-            ) : (
-              <Card className="border-dashed">
-                <CardContent className="p-12 text-center">
-                  <div className="flex justify-center mb-4">
-                    <Telescope className="h-12 w-12 text-orange-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    @{userDetails.userName} has no Product yet.
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Each of the Platform's users can sell and buy products. Chat
-                    with @{userDetails.userName} to find out more!
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {userDetails.roleType.toLowerCase() === "user" && (
+          {/* Balance Tab Content */}
+          {userDetails.roleType && userDetails.roleType.toLowerCase() === "user" && (
             <TabsContent value="balance" className="mt-4">
               {/* Balance content remains unchanged */}
               <Card>
@@ -335,7 +317,7 @@ function ProfilePage() {
                       My Balance
                     </div>
                     <Button
-                      onClick={handleNavigateToTopUp} //call the backend session here
+                      onClick={handleNavigateToTopUp}
                       className="bg-orange-600 hover:bg-orange-700 flex items-center"
                     >
                       <DollarSign className="mr-2 h-4 w-4" />
@@ -390,7 +372,7 @@ function ProfilePage() {
                           </p>
                           {balance.availableBalance <= 0 && (
                             <p className="text-sm text-red-600 mt-2">
-                              Please remember top up your wallet before
+                              Please remember to top up your wallet before
                               purchasing items
                             </p>
                           )}
@@ -416,7 +398,7 @@ function ProfilePage() {
                   )}
 
                   <div>
-                    <h4 className="font-semibold mb-4">Transaction history</h4>
+                    <h4 className="font-semibold mb-4">Transaction History</h4>
                     <div className="text-center py-8">
                       <Image
                         src="/placeholder.svg"
@@ -435,6 +417,8 @@ function ProfilePage() {
               </Card>
             </TabsContent>
           )}
+
+          {/* Notifications Tab Content */}
           <TabsContent value="notifications" className="mt-4">
             <Card className="shadow-md">
               <CardHeader>
@@ -477,7 +461,7 @@ function ProfilePage() {
                     <div className="flex justify-between items-center mt-4">
                       <Button
                         disabled={currentPage === 1}
-                        onClick={() => setCurrentPage(currentPage - 1)}
+                        onClick={() => handlePageChange("prev")}
                       >
                         Previous
                       </Button>
@@ -486,7 +470,7 @@ function ProfilePage() {
                       </span>
                       <Button
                         disabled={currentPage === totalPages}
-                        onClick={() => setCurrentPage(currentPage + 1)}
+                        onClick={() => handlePageChange("next")}
                       >
                         Next
                       </Button>
@@ -507,9 +491,44 @@ function ProfilePage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Reviews Tab Content */}
+          <TabsContent value="reviews" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Your Reviews</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {reviews.length > 0 ? (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <ReviewCard key={review.id} review={review} />
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="border-dashed">
+                    <CardContent className="p-12 text-center">
+                      <div className="flex justify-center mb-4">
+                        <Telescope className="h-12 w-12 text-orange-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">
+                        You have not written any reviews yet.
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Once you purchase and use products, you can leave reviews here.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Contact and Additional Information Cards */}
       <div className="grid gap-4 md:grid-cols-2 mt-6">
+        {/* Contact Information */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Contact Information</CardTitle>
@@ -517,15 +536,16 @@ function ProfilePage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
               <EnvelopeClosedIcon className="h-4 w-4 text-orange-600" />
-              <span>{userDetails.email}</span>
+              <span>{userDetails.email || "No Email"}</span>
             </div>
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-orange-600" />
-              <span>{userDetails.phoneNumber}</span>
+              <span>{userDetails.phoneNumber || "No Phone Number"}</span>
             </div>
           </CardContent>
         </Card>
 
+        {/* Additional Information */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Additional Information</CardTitle>
@@ -533,18 +553,23 @@ function ProfilePage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-orange-600" />
-              <span>{userDetails.billingAddress}</span>
+              <span>{userDetails.billingAddress || "No Billing Address"}</span>
             </div>
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-orange-600" />
               <span>
-                Joined {new Date(userDetails.createdAt).toLocaleDateString()}
+                {userDetails.createdAt
+                  ? `Joined ${new Date(userDetails.createdAt).toLocaleDateString()}`
+                  : "No Join Date"}
               </span>
             </div>
           </CardContent>
         </Card>
 
-        <button>Transfer</button>
+        {/* Transfer Button */}
+        <button className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
+          Transfer
+        </button>
       </div>
     </div>
   );
@@ -554,10 +579,10 @@ ProfilePage.getLayout = function getLayout(page) {
   return <UserLayout>{page}</UserLayout>;
 };
 
-// Wrap CheckoutPage with AuthGuard
-const WrappedCheckoutPage = AuthGuard(ProfilePage, { allowedRoles: ["user"] });
+// Wrap ProfilePage with AuthGuard
+const WrappedProfilePage = AuthGuard(ProfilePage, { allowedRoles: ["user"] });
 
-// Ensure `getLayout` is passed along to the wrapped component
-WrappedCheckoutPage.getLayout = ProfilePage.getLayout;
+// Ensure `getLayout` is preserved
+WrappedProfilePage.getLayout = ProfilePage.getLayout;
 
-export default WrappedCheckoutPage;
+export default WrappedProfilePage;

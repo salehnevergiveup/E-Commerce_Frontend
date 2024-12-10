@@ -1,37 +1,34 @@
+// /frontend/services/sendRequest.js
+
 import axiosClients from '../auth/axios-Instance-service';
 import RequestMethod from '../../enums/request-methods';
 
 /**
- * @param {string} method 
- * @param {string} url  
- * @param {Object | FormData} payload 
- * @param {boolean} requireAuth 
- * @param {Object} [customHeaders]
- * @returns {Promise} 
+ * Sends an HTTP request to the backend.
+ * No more media handling here, payload should already have the necessary media information (URLs, etc.)
+ * 
+ * @param {string} method - HTTP method (POST, PUT, DELETE, GET).
+ * @param {string} url - The endpoint URL.
+ * @param {Object} payload - The request payload (already prepared with media data).
+ * @param {boolean} requireAuth - Whether the request requires authentication.
+ * @param {Object} [customHeaders={}] - Custom headers for the request.
+ * @returns {Promise<Object>} - The response data or an error object.
  */
-
 export async function sendRequest(method, url, payload = null, requireAuth = false, customHeaders = {}) {
-
   if (!Object.values(RequestMethod).includes(method)) {
     throw new Error(`Invalid request method: ${method}`);
   }
 
-  let processedData = payload;
-
-  if (payload && typeof payload === 'object') {
-    processedData = await prepareFormData(payload);
-  }
-
   const headers = {
     'Content-Type': 'application/json',
-    ...customHeaders
+    ...customHeaders,
   };
 
   const requestData = {
     method,
     url,
     headers,
-    data: processedData,
+    data: payload,
   };
 
   const requestClient = requireAuth ? axiosClients.auth : axiosClients.public;
@@ -39,9 +36,8 @@ export async function sendRequest(method, url, payload = null, requireAuth = fal
   try {
     const response = await requestClient(requestData);
     return response.data;
-
   } catch (error) {
-    if (error.response.data) {
+    if (error.response?.data) {
       return {
         error: true,
         message: error.response.data.message || 'Server Error',
@@ -63,22 +59,27 @@ export async function sendRequest(method, url, payload = null, requireAuth = fal
   }
 }
 
-//later delete this function
-export async function testRequest(method, url, payload = null, requireAuth = false, customHeaders = {}) {
 
+/**
+ * Sends an HTTP request, handling media uploads/deletions if present.
+ * @param {string} method - HTTP method (e.g., POST, PUT, DELETE).
+ * @param {string} url - The endpoint URL.
+ * @param {Object} payload - The request payload.
+ * @param {boolean} requireAuth - Whether the request requires authentication.
+ * @param {Object} [customHeaders={}] - Custom headers for the request.
+ * @returns {Promise<Object>} - The response data or an error object.
+ */
+export async function sendRequestTest(method, url, payload = null, requireAuth = false, customHeaders = {}) {
   if (!Object.values(RequestMethod).includes(method)) {
     throw new Error(`Invalid request method: ${method}`);
   }
 
-  let processedData = payload;
-
-  if (payload && typeof payload === 'object') {
-    processedData = await prepareFormData(payload);
-  }
+  // Prepare the payload, handling media if necessary
+  const processedData = await prepareData(method, payload);
 
   const headers = {
     'Content-Type': 'application/json',
-    ...customHeaders
+    ...customHeaders,
   };
 
   const requestData = {
@@ -87,62 +88,5 @@ export async function testRequest(method, url, payload = null, requireAuth = fal
     headers,
     data: processedData,
   };
-  
 }
-
-
-/**
- * @param {File} file 
- * @returns {Promise<string>} 
- */
-function convertFileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.readAsDataURL(file);
-
-    // On successful reading
-    reader.onload = () => {
-      const base64String = reader.result.split(',')[1];
-      resolve(base64String);
-    };
-
-    // On error
-    reader.onerror = (error) => {
-      reject(error);
-    };
-  });
-}
-
-/**
-* @param {Object} data - 
-* @param {FileList} files 
-* @returns {Promise<Object>} 
-*/
-
-/**
-* Prepares form data by converting any File objects to Base64 strings.
-* @param {Object} data - The form data as key-value pairs.
-* @returns {Promise<Object>} - The processed form data with Base64 media.
-*/
-export async function prepareFormData(data) {
-  const preparedData = { ...data };
-  for (const key in preparedData) {
-    if (preparedData.hasOwnProperty(key)) {
-      const value = preparedData[key];
-
-      if (value instanceof File) {
-        try {
-          const base64 = await convertFileToBase64(value);
-          preparedData[key] = base64;
-        } catch (error) {
-          console.error(`Error converting file for key "${key}":`, error);
-          throw new Error('Failed to process the media file.');
-        }
-      }
-    }
-  }
-  return preparedData;
-}
-
-export default sendRequest;
+export default sendRequest; //

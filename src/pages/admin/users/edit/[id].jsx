@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import Image from "next/image"; 
+import Image from "next/image";
 import { toast } from "react-toastify"; // Ensure you have react-toastify installed
 
 import { Button } from "@/components/ui/button";
@@ -28,11 +28,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { Pencil, ArrowLeft, Upload } from "lucide-react";
+import { Pencil, ArrowLeft, Upload, Trash2 } from "lucide-react"; // Import Trash2 for delete icons
 
 import { sendRequest } from "@/services/requests/request-service"; // Ensure correct path
 import RequestMethods from "@/enums/request-methods"; // Ensure correct path
 import AdminLayout from "@/layouts/admin-layout";
+
+import S3MediaFacade from '@/services/mediaService/handle-media';
 
 export default function EditUser() {
   const router = useRouter();
@@ -49,9 +51,9 @@ export default function EditUser() {
     roleId: "",
     phoneNumber: "",
     billingAddress: "",
-    avatar: "",
-    userCover: "",
+    medias: [], // Each media: { id, type, mediaUrl }
   });
+  const [originalMedias, setOriginalMedias] = useState([]); // Track original medias for deletions
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -61,7 +63,7 @@ export default function EditUser() {
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
   const [coverDialogOpen, setCoverDialogOpen] = useState(false);
 
-  // New state to determine if role is editable
+  // State to determine if role is editable
   const [isRoleEditable, setIsRoleEditable] = useState(false);
 
   // Fetch roles on component mount
@@ -103,7 +105,7 @@ export default function EditUser() {
       try {
         const response = await sendRequest(
           RequestMethods.GET,
-          `users/${id}`, // Ensure this endpoint exists and returns the user data
+          `users/${id}`,
           null,
           true // requireAuth
         );
@@ -120,17 +122,18 @@ export default function EditUser() {
             roleId: fetchedUser.roleId ? fetchedUser.roleId.toString() : "",
             phoneNumber: fetchedUser.phoneNumber || "",
             billingAddress: fetchedUser.billingAddress || "",
-            avatar: fetchedUser.avatar || "",
-            userCover: fetchedUser.userCover || "",
+            medias: fetchedUser.medias || [], // Set medias array
           });
 
-          // Find the user's role from the roles state
+          // Set originalMedias for tracking deletions
+          setOriginalMedias(fetchedUser.medias || []);
+
           const selectedRole = roles.find(
             (roleItem) => roleItem.id.toString() === fetchedUser.roleId.toString()
           );
           if (selectedRole) {
             setPermissions(selectedRole.permission);
-            // Determine if the role is editable based on roleType
+
             setIsRoleEditable(selectedRole.roleType.toLowerCase() === "admin");
           } else {
             setPermissions(null);
@@ -153,12 +156,12 @@ export default function EditUser() {
   // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setUser({ ...user, [name]: value });
+    setUser(prevUser => ({ ...prevUser, [name]: value }));
   };
 
   // Handle select changes
   const handleSelectChange = (name, value) => {
-    setUser({ ...user, [name]: value });
+    setUser(prevUser => ({ ...prevUser, [name]: value }));
 
     if (name === "roleId") {
       // Find the selected role to display permissions
@@ -168,7 +171,7 @@ export default function EditUser() {
       if (selectedRole) {
         setPermissions(selectedRole.permission);
         // Update isRoleEditable based on the new roleType
-        setIsRoleEditable(selectedRole.roleType === "Admin");
+        setIsRoleEditable(selectedRole.roleType.toLowerCase() === "admin");
       } else {
         setPermissions(null);
         setIsRoleEditable(false);
@@ -176,38 +179,14 @@ export default function EditUser() {
     }
   };
 
-  // Handle image uploads
-  const handleImageUpload = (type, file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        setUser({ ...user, [type]: e.target.result });
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Handle form submission
-  const handleUpdate = async () => { // Renamed from handleCreate to handleUpdate
-    // Validate required fields
-    if (
-      !user.userName ||
-      !user.name ||
-      !user.email ||
-      !user.gender ||
-      !user.age ||
-      !user.roleId ||
-      !user.status
-    ) {
-      toast.error("Please fill in all required fields.");
-      return;
-    }
-
+  /**
+   * Centralized method to send a PUT request with all user data to update the backend.
+   */
+  const sendUserUpdate = async (updatedMedias) => {
     setLoading(true);
     setError(null);
-
     try {
-      // Prepare the payload
+      // Prepare the payload including medias
       const payload = {
         userName: user.userName,
         name: user.name,
@@ -218,30 +197,130 @@ export default function EditUser() {
         roleId: parseInt(user.roleId),
         phoneNumber: user.phoneNumber,
         billingAddress: user.billingAddress,
-        avatar: user.avatar, // URL or Base64 string
-        userCover: user.userCover, // URL or Base64 string
+        medias: updatedMedias ? updatedMedias : user.medias.map(media => ({
+          id: media.id,
+          type: media.type,
+          mediaUrl: media.mediaUrl,
+        })),
       };
 
-      // Make the PUT request to update the user
+      // Make the PUT request to update the user information
       const updateResponse = await sendRequest(
         RequestMethods.PUT,
-        `/users/${id}`, // Ensure this matches your backend route for updating users
+        `/users/${id}`,
         payload,
         true // requireAuth
       );
 
       if (updateResponse.success) {
-        toast.success("User updated successfully.");
-        // Optionally, you can redirect to the updated user's detail page
-        router.push(`/admin/users/view/${id}`);
+        toast.success("User information updated successfully.");
       } else {
-        setError(updateResponse.message || "Failed to update user.");
+        setError(updateResponse.message || "Failed to update user information.");
+        toast.error(updateResponse.message || "Failed to update user information.");
       }
     } catch (err) {
-      console.error("Error updating user:", err);
-      setError(err.message || "Failed to update user.");
+      console.error("Error updating user information:", err);
+      setError(err.message || "Failed to update user information.");
+      toast.error(err.message || "Failed to update user information.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Handle uploading or updating media.
+   * Updates the user state and sends the comprehensive PUT request to the backend.
+   * @param {string} url - Current media URL (for existing media)
+   * @param {string} type - Type of media ('User_Profile' or 'User_Cover')
+   * @param {File} file - The file to upload
+   */
+  const handleUploadOrUpdateMedia = async (url, type, file) => {
+    if (!file) return;
+
+    try {
+      let updatedMedias = user.medias;
+
+      // Check if media of this type already exists based on mediaUrl
+      const existingMediaIndex = updatedMedias.findIndex(media => media.mediaUrl === url && url != "");
+      if (existingMediaIndex !== -1) {
+
+        // Media exists, perform update
+        const existingMedia = updatedMedias[existingMediaIndex];
+
+        // Upload new media to S3 and get the new URL
+        const updateMediaArray = [{
+          id: existingMedia.id,
+          type: existingMedia.type,
+          file: file,
+          url: existingMedia.mediaUrl,
+        }];
+
+        const updateResponse = await S3MediaFacade.updateMedias(user.medias, updateMediaArray );
+ 
+        if (updateResponse && updateResponse.updatedMediaArray) {
+          // Update the media in the state
+          setUser(prevUser => ({
+            ...prevUser,
+            medias: updateResponse.updatedMediaArray,
+          }));
+
+          await sendUserUpdate(updateResponse.updatedMediaArray);
+        }
+
+      } else {
+        const uploadedMedias = await S3MediaFacade.uploadMedias([{ file, type }]);
+
+        if (uploadedMedias.length > 0) {
+          const uploadedMedia = uploadedMedias[0];
+
+          updatedMedias.push(uploadedMedia);
+
+          setUser(prevUser => ({
+            ...prevUser,
+            medias: updatedMedias,
+          }));
+
+          await sendUserUpdate();
+        }
+      }
+    } catch (error) {
+      console.error(`Error handling ${type}:`, error);
+      toast.error(`Error handling ${type}.`);
+    }
+  };
+
+  /**
+   * Handle deleting media.
+   * Updates the user state and sends the comprehensive PUT request to the backend.
+   * @param {string} type - Type of media ('User_Profile' or 'User_Cover')
+   */
+  const handleDeleteMedia = async (type) => {
+    const confirmDelete = window.confirm(`Are you sure you want to delete the ${type.replace('_', ' ')}?`);
+    if (!confirmDelete) return;
+
+    try {
+
+      const mediaToDelete = user.medias.find(media => media.type === type);
+      if (!mediaToDelete || !mediaToDelete.mediaUrl) {
+        toast.error(`No ${type.replace('_', ' ')} found to delete.`);
+        return;
+      }
+
+      await S3MediaFacade.deleteMedias([mediaToDelete.mediaUrl]);
+
+      const updatedMedias = user.medias.map(media => media.type == type ? { ...media, mediaUrl: "" } : media);
+
+      setUser(prevUser => ({
+        ...prevUser,
+        medias: updatedMedias,
+      }));
+
+      toast.success(`${type.replace('_', ' ')} deleted successfully.`);
+
+      await sendUserUpdate(updatedMedias);
+    } catch (error) {
+      console.error(`Error deleting ${type}:`, error);
+      toast.error(`Error deleting ${type}.`);
     }
   };
 
@@ -261,6 +340,10 @@ export default function EditUser() {
     }
   };
 
+  // Extract avatar and cover from medias array
+  const avatar = user.medias.find(media => media.type === "User_Profile")?.mediaUrl || "";
+  const userCover = user.medias.find(media => media.type === "User_Cover")?.mediaUrl || "";
+
   return (
     <div className="container mx-auto px-4">
       {/* Back Button */}
@@ -276,9 +359,9 @@ export default function EditUser() {
       {/* Banner */}
       <div className="relative h-48 bg-orange-600 rounded-t-lg mb-16">
         <div className="absolute inset-0">
-          {user.userCover ? (
+          {userCover ? (
             <Image
-              src={user.userCover}
+              src={userCover}
               alt="Cover"
               layout="fill"
               className="w-full h-full object-cover rounded-t-lg"
@@ -287,6 +370,7 @@ export default function EditUser() {
             <div className="w-full h-full bg-orange-600 rounded-t-lg"></div>
           )}
         </div>
+        {/* Upload Cover Image */}
         <Dialog open={coverDialogOpen} onOpenChange={setCoverDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="secondary" size="icon" className="absolute bottom-2 right-2">
@@ -297,12 +381,11 @@ export default function EditUser() {
             <DialogHeader>
               <DialogTitle className="text-center">Upload Cover Image</DialogTitle>
             </DialogHeader>
-            <div
-              className="flex items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
+            <div className="flex items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
               <label htmlFor="cover-upload" className="cursor-pointer">
                 <div className="flex flex-col items-center">
                   <Upload className="h-12 w-12 text-orange-400" />
-                  <span className="mt-2 text-sm text-gray-500">Choose a cover image to upload</span>
+                  <span className="mt-2 text-sm text-gray-500">Choose a file to upload</span>
                 </div>
                 <input
                   id="cover-upload"
@@ -311,7 +394,7 @@ export default function EditUser() {
                   accept="image/*"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleImageUpload('userCover', file);
+                    if (file) handleUploadOrUpdateMedia(userCover, "User_Cover", file);
                     setCoverDialogOpen(false);
                   }}
                 />
@@ -319,6 +402,19 @@ export default function EditUser() {
             </div>
           </DialogContent>
         </Dialog>
+        {/* Delete Cover Image */}
+        {userCover && (
+          <Button
+            variant="destructive"
+            size="icon"
+            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"
+            onClick={() => handleDeleteMedia('User_Cover')}
+            title="Delete Cover Image"
+            aria-label="Delete Cover Image"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Profile Section */}
@@ -327,12 +423,26 @@ export default function EditUser() {
           <div className="flex items-start gap-6">
             <div className="relative">
               <Avatar className="h-24 w-24 border-4 border-white">
-                {user.avatar ? (
-                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                {avatar ? (
+                  <AvatarImage src={avatar || "/placeholder.svg"} alt={user.name} />
                 ) : (
                   <AvatarFallback>{user.userName ? user.userName.charAt(0).toUpperCase() : "U"}</AvatarFallback>
                 )}
               </Avatar>
+              {/* Delete Button for Avatar */}
+              {avatar && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                  onClick={() => handleDeleteMedia('User_Profile')}
+                  title="Delete Avatar"
+                  aria-label="Delete Avatar"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+              {/* Upload Avatar */}
               <Dialog open={avatarDialogOpen} onOpenChange={setAvatarDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="secondary" size="icon" className="absolute bottom-0 right-0">
@@ -343,12 +453,11 @@ export default function EditUser() {
                   <DialogHeader>
                     <DialogTitle>Upload Avatar</DialogTitle>
                   </DialogHeader>
-                  <div
-                    className="flex items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
+                  <div className="flex items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
                     <label htmlFor="avatar-upload" className="cursor-pointer">
                       <div className="flex flex-col items-center">
                         <Upload className="h-12 w-12 text-orange-400" />
-                        <span className="mt-2 text-sm text-gray-500">Upload avatar</span>
+                        <span className="mt-2 text-sm text-gray-500">Choose a file to upload</span>
                       </div>
                       <input
                         id="avatar-upload"
@@ -357,7 +466,7 @@ export default function EditUser() {
                         accept="image/*"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) handleImageUpload('avatar', file);
+                          if (file) handleUploadOrUpdateMedia(avatar, 'User_Profile', file);
                           setAvatarDialogOpen(false);
                         }}
                       />
@@ -380,12 +489,13 @@ export default function EditUser() {
                   {user.status}
                 </Badge>
                 {user.roleId && (
-                  <Badge  className={`${getStatusColor(user.status)} text-white`} variant="outline">
+                  <Badge className={`${getStatusColor(user.status)} text-white`} variant="outline">
                     {roles.find((roleItem) => roleItem.id.toString() === user.roleId)?.roleType || "N/A"}
                   </Badge>
                 )}
               </div>
-              {/* Conditionally Display Permissions */}
+              {/* PermissionsDisplay Component */}
+              {permissions && <PermissionsDisplay permissions={permissions} />}
             </div>
           </div>
         </CardContent>
@@ -492,25 +602,24 @@ export default function EditUser() {
                 <SelectContent>
                   {isRoleEditable
                     ? roles
-                        .filter((roleItem) => roleItem.roleType.toLowerCase() === "admin")
-                        .map((roleItem) => (
-                          <SelectItem key={roleItem.id} value={roleItem.id.toString()}>
-                            {roleItem.roleName}
-                          </SelectItem>
-                        ))
+                      .filter((roleItem) => roleItem.roleType.toLowerCase() === "admin")
+                      .map((roleItem) => (
+                        <SelectItem key={roleItem.id} value={roleItem.id.toString()}>
+                          {roleItem.roleName}
+                        </SelectItem>
+                      ))
                     : roles
-                        .filter((roleItem) => roleItem.roleType.toLowerCase() === "user")
-                        .map((roleItem) => (
-                          <SelectItem key={roleItem.id} value={roleItem.id.toString()}>
-                            {roleItem.roleName}
-                          </SelectItem>
-                        ))
+                      .filter((roleItem) => roleItem.roleType.toLowerCase() === "user")
+                      .map((roleItem) => (
+                        <SelectItem key={roleItem.id} value={roleItem.id.toString()}>
+                          {roleItem.roleName}
+                        </SelectItem>
+                      ))
                   }
                 </SelectContent>
               </Select>
               {/* PermissionsDisplay Component */}
               {permissions && <PermissionsDisplay permissions={permissions} />}
-              {/* Already conditionally rendered in Profile Section */}
             </div>
             <div className="space-y-2">
               <Label htmlFor="status">Status <span className="text-red-500">*</span></Label>
@@ -537,7 +646,7 @@ export default function EditUser() {
       <div className="mt-6 flex justify-end">
         <Button
           className="bg-orange-600 hover:bg-orange-700"
-          onClick={handleUpdate} // Changed from handleCreate to handleUpdate
+          onClick={() => sendUserUpdate()}
           disabled={loading}
         >
           {loading ? "Updating..." : "Update User"}

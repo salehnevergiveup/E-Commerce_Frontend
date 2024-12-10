@@ -1,7 +1,8 @@
+// src/pages/admin/dashboard.jsx
+
 // Import necessary modules and hooks
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import AdminLayout from "@/layouts/admin-layout";
 import { useAuth } from "@/contexts/auth-context";
 import sendRequest from "@/services/requests/request-service";
@@ -46,13 +47,16 @@ import {
   MoreVertical,
 } from "lucide-react";
 
-// Time frame options - Only Monthly
-const TIME_FRAMES = [{ value: "monthly", label: "Monthly" }];
+// Updated Time frame options
+const TIME_FRAMES = [
+  { value: "weekly", label: "Last Week" },
+  { value: "monthly", label: "Last Month" },
+  { value: "annually", label: "Last Year" },
+];
 
-// Colors for charts
-const COLORS = ["#f97316", "#fb923c", "#fdba74", "#fed7aa"];
+// Colors for charts and emojis
+const COLORS = ["#4ade80", "#f87171"]; // Green for good, Red for bad
 
-// Dashboard Component
 export default function Dashboard() {
   const { user } = useAuth();
   console.log(user.role);
@@ -66,27 +70,41 @@ export default function Dashboard() {
 
   const [salesData, setSalesData] = useState([]);
   const [transactionsData, setTransactionsData] = useState([]);
-  const [registrationsData, setRegistrationsData] = useState([]);
+  // Removed Registrations State
+  // const [registrationsData, setRegistrationsData] = useState([]);
   const [usersData, setUsersData] = useState([]);
   const [productsData, setProductsData] = useState([]);
+  // Added Review Report State
+  const [reviewData, setReviewData] = useState([]);
+
+  // State for Time Frames
+  const [salesTimeFrame, setSalesTimeFrame] = useState("monthly");
+  const [transactionsTimeFrame, setTransactionsTimeFrame] = useState("monthly");
+  // Removed Registrations TimeFrame
+  // const [registrationsTimeFrame, setRegistrationsTimeFrame] = useState("monthly");
+  const [revenueTimeFrame, setRevenueTimeFrame] = useState("monthly");
+  const [usersTimeFrame, setUsersTimeFrame] = useState("monthly");
+  const [productsTimeFrame, setProductsTimeFrame] = useState("monthly");
+  // Added Review TimeFrame
+  const [reviewTimeFrame, setReviewTimeFrame] = useState("monthly");
 
   // Loading and Error States
   const [loading, setLoading] = useState({
     sales: false,
     transactions: false,
-    registrations: false,
     revenue: false,
     users: false,
     products: false,
+    review: false, // Added for Review Report
   });
 
   const [error, setError] = useState({
     sales: null,
     transactions: null,
-    registrations: null,
     revenue: null,
     users: null,
     products: null,
+    review: null, // Added for Review Report
   });
 
   // Helper function to format currency
@@ -128,16 +146,22 @@ export default function Dashboard() {
         true
       );
       console.log("Sales data fetched: ", response.data);
-      setSalesData(response.data);
-      setTotalSalesData(response.data);
+      if (Array.isArray(response.data)) {
+        setSalesData(response.data);
+        setTotalSalesData(response.data);
+      } else {
+        console.warn("Expected sales data to be an array, but got:", response.data);
+        setSalesData([]);
+        setTotalSalesData([]);
+      }
 
       // Calculate trend
-      if (response.data.length >= 2) {
-        const currentTotal =
-          response.data[response.data.length - 1].totalSalesAmount;
-        const previousTotal =
-          response.data[response.data.length - 2].totalSalesAmount;
-        setTotalSalesTrend(currentTotal >= previousTotal ? "up" : "down");
+      if (Array.isArray(response.data) && response.data.length >= 2) {
+        const { current, previous } = getCurrentAndPrevious(
+          response.data,
+          "totalSalesAmount"
+        );
+        setTotalSalesTrend(current >= previous ? "up" : "down");
       } else {
         setTotalSalesTrend(null);
       }
@@ -147,6 +171,8 @@ export default function Dashboard() {
         ...prev,
         sales: err.message || "Error fetching sales data",
       }));
+      setSalesData([]);
+      setTotalSalesData([]);
     } finally {
       setLoading((prev) => ({ ...prev, sales: false }));
     }
@@ -164,39 +190,21 @@ export default function Dashboard() {
         true
       );
       console.log("Fetch transaction data: ", response.data);
-      setTransactionsData(response.data);
+      if (Array.isArray(response.data)) {
+        setTransactionsData(response.data);
+      } else {
+        console.warn("Expected transactions data to be an array, but got:", response.data);
+        setTransactionsData([]);
+      }
     } catch (err) {
       console.error("Error fetching transactions data:", err);
       setError((prev) => ({
         ...prev,
         transactions: err.message || "Error fetching transactions data",
       }));
+      setTransactionsData([]); // Optionally set to empty array on error
     } finally {
       setLoading((prev) => ({ ...prev, transactions: false }));
-    }
-  };
-
-  const fetchRegistrationsData = async (timeFrame) => {
-    setLoading((prev) => ({ ...prev, registrations: true }));
-    setError((prev) => ({ ...prev, registrations: null }));
-    try {
-      const payload = { timeFrame };
-      const response = await sendRequest(
-        RequestMethods.POST,
-        `/report/registrations`,
-        payload,
-        true
-      );
-      console.log("Registration data:", response.data);
-      setRegistrationsData(response.data);
-    } catch (err) {
-      console.error("Error fetching registrations data:", err);
-      setError((prev) => ({
-        ...prev,
-        registrations: err.message || "Error fetching registrations data",
-      }));
-    } finally {
-      setLoading((prev) => ({ ...prev, registrations: false }));
     }
   };
 
@@ -212,15 +220,20 @@ export default function Dashboard() {
         true
       );
       console.log("Fetch revenue data:", response.data);
-      setTotalRevenueData(response.data);
+      if (Array.isArray(response.data)) {
+        setTotalRevenueData(response.data);
+      } else {
+        console.warn("Expected revenue data to be an array, but got:", response.data);
+        setTotalRevenueData([]);
+      }
 
       // Calculate trend
-      if (response.data.length >= 2) {
-        const currentTotal =
-          response.data[response.data.length - 1].totalRevenue;
-        const previousTotal =
-          response.data[response.data.length - 2].totalRevenue;
-        setTotalRevenueTrend(currentTotal >= previousTotal ? "up" : "down");
+      if (Array.isArray(response.data) && response.data.length >= 2) {
+        const { current, previous } = getCurrentAndPrevious(
+          response.data,
+          "totalRevenue"
+        );
+        setTotalRevenueTrend(current >= previous ? "up" : "down");
       } else {
         setTotalRevenueTrend(null);
       }
@@ -230,6 +243,7 @@ export default function Dashboard() {
         ...prev,
         revenue: err.message || "Error fetching revenue data",
       }));
+      setTotalRevenueData([]);
     } finally {
       setLoading((prev) => ({ ...prev, revenue: false }));
     }
@@ -247,13 +261,19 @@ export default function Dashboard() {
         true
       );
       console.log("Fetch user data: ", response.data);
-      setUsersData(response.data);
+      if (Array.isArray(response.data)) {
+        setUsersData(response.data);
+      } else {
+        console.warn("Expected users data to be an array, but got:", response.data);
+        setUsersData([]);
+      }
     } catch (err) {
       console.error("Error fetching users data:", err);
       setError((prev) => ({
         ...prev,
         users: err.message || "Error fetching users data",
       }));
+      setUsersData([]);
     } finally {
       setLoading((prev) => ({ ...prev, users: false }));
     }
@@ -271,15 +291,52 @@ export default function Dashboard() {
         true
       );
       console.log("Product category data:", response.data);
-      setProductsData(response.data);
+      if (Array.isArray(response.data)) {
+        setProductsData(response.data);
+      } else {
+        console.warn("Expected products data to be an array, but got:", response.data);
+        setProductsData([]);
+      }
     } catch (err) {
       console.error("Error fetching products data:", err);
       setError((prev) => ({
         ...prev,
         products: err.message || "Error fetching products data",
       }));
+      setProductsData([]);
     } finally {
       setLoading((prev) => ({ ...prev, products: false }));
+    }
+  };
+
+  // Added Fetch Function for Review Report
+  const fetchReviewData = async (timeFrame) => {
+    setLoading((prev) => ({ ...prev, review: true }));
+    setError((prev) => ({ ...prev, review: null }));
+    try {
+      const payload = { timeFrame };
+      const response = await sendRequest(
+        RequestMethods.POST,
+        `/report/reviews`,
+        payload,
+        true
+      );
+      console.log("Fetch review data:", response.data);
+      if (Array.isArray(response.data)) {
+        setReviewData(response.data);
+      } else {
+        console.warn("Expected review data to be an array, but got:", response.data);
+        setReviewData([]);
+      }
+    } catch (err) {
+      console.error("Error fetching review data:", err);
+      setError((prev) => ({
+        ...prev,
+        review: err.message || "Error fetching review data",
+      }));
+      setReviewData([]); // Optionally set to empty array on error
+    } finally {
+      setLoading((prev) => ({ ...prev, review: false }));
     }
   };
 
@@ -287,10 +344,11 @@ export default function Dashboard() {
   useEffect(() => {
     fetchSalesData("monthly");
     fetchTransactionsData("monthly");
-    fetchRegistrationsData("monthly");
+    // fetchRegistrationsData("monthly"); // Removed
     fetchRevenueData("monthly");
     fetchUsersData("monthly");
     fetchProductsData("monthly");
+    fetchReviewData("monthly"); // Added
   }, []);
 
   // Calculate performanceData
@@ -299,11 +357,21 @@ export default function Dashboard() {
     !loading.sales &&
     !loading.revenue &&
     !loading.transactions &&
-    !loading.registrations &&
+    !loading.review &&
+    !loading.users &&
+    !loading.products &&
+    Array.isArray(salesData) &&
+    Array.isArray(totalRevenueData) &&
+    Array.isArray(transactionsData) &&
+    Array.isArray(reviewData) &&
+    Array.isArray(usersData) &&
+    Array.isArray(productsData) &&
     salesData.length > 0 &&
     totalRevenueData.length > 0 &&
     transactionsData.length > 0 &&
-    registrationsData.length > 0
+    reviewData.length > 0 &&
+    usersData.length > 0 &&
+    productsData.length > 0
   ) {
     const salesValues = getCurrentAndPrevious(salesData, "totalSalesAmount");
     const revenueValues = getCurrentAndPrevious(
@@ -314,9 +382,9 @@ export default function Dashboard() {
       transactionsData,
       "totalTransactions"
     );
-    const registrationsValues = getCurrentAndPrevious(
-      registrationsData,
-      "totalRegistrations"
+    const reviewValues = getCurrentAndPrevious(
+      reviewData,
+      "GoodReviews" // Assuming you want to track good reviews
     );
 
     performanceData = [
@@ -336,9 +404,9 @@ export default function Dashboard() {
         Previous: transactionsValues.previous,
       },
       {
-        subject: "Registrations",
-        Current: registrationsValues.current,
-        Previous: registrationsValues.previous,
+        subject: "Reviews",
+        Current: reviewValues.current,
+        Previous: reviewValues.previous,
       },
     ];
   }
@@ -346,92 +414,145 @@ export default function Dashboard() {
   // Handlers for time frame changes
   const handleTimeFrameChange = (widget, value) => {
     if (widget === "sales") {
+      setSalesTimeFrame(value);
       fetchSalesData(value);
     } else if (widget === "transactions") {
+      setTransactionsTimeFrame(value);
       fetchTransactionsData(value);
-    } else if (widget === "registrations") {
-      fetchRegistrationsData(value);
+    } else if (widget === "review") {
+      setReviewTimeFrame(value);
+      fetchReviewData(value);
     } else if (widget === "revenue") {
+      setRevenueTimeFrame(value);
       fetchRevenueData(value);
     } else if (widget === "users") {
+      setUsersTimeFrame(value);
       fetchUsersData(value);
     } else if (widget === "products") {
+      setProductsTimeFrame(value);
       fetchProductsData(value);
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Congratulations Card */}
+      {/* Enhanced Welcome Card */}
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold">
-                Congratulations {user.name}! 🎉
-              </h2>
-              <p className="text-muted-foreground">Best seller of the month</p>
-              <div className="mt-4">
-                <div className="text-2xl font-bold text-orange-600">$48.9k</div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">78% of target</span>
-                  <TrendingUp className="h-4 w-4 text-green-500" />
+        {totalSalesTrend && (
+          <Card >
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold">
+                  Welcome Back, {user.name}!{" "}
+                  {totalSalesTrend === "up" ? "😊" : "😞"}
+                </h2>
+                <p className="text-muted-foreground">
+                  {totalSalesTrend === "up"
+                    ? "Sales have increased compared to last month!"
+                    : "Sales have decreased compared to last month."}
+                </p>
+                <div className="mt-4">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {formatValue(
+                      salesData.reduce(
+                        (sum, item) => sum + (item.totalSalesAmount || 0),
+                        0
+                      ) || 0
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">
+                      {totalSalesTrend === "up" ? "+" : ""}
+                      {(
+                        ((getCurrentAndPrevious(salesData, "totalSalesAmount")
+                          .current -
+                          getCurrentAndPrevious(salesData, "totalSalesAmount")
+                            .previous) /
+                          getCurrentAndPrevious(
+                            salesData,
+                            "totalSalesAmount"
+                          ).previous) *
+                        100
+                      ).toFixed(2)}
+                      % from last month
+                    </span>
+                    {totalSalesTrend === "up" ? (
+                      <TrendingUp className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <TrendingUp className="h-4 w-4 text-red-500 transform rotate-180" />
+                    )}
+                  </div>
                 </div>
               </div>
-              <Button className="mt-4 bg-orange-600 hover:bg-orange-700">
-                View Sales
-              </Button>
-            </div>
-            <div className="hidden md:block">
-              <Trophy className="h-24 w-24 text-orange-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Registrations Card */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Registrations</p>
-                <h3 className="text-2xl font-bold">
-                  {registrationsData.reduce(
-                    (sum, item) => sum + (item.totalRegistrations || 0),
-                    0
-                  ) || 0}
-                </h3>
-                <span
-                  className={`text-sm ${
-                    totalSalesTrend === "up" ? "text-green-500" : "text-red-500"
-                  }`}
-                >
-                  {totalSalesTrend === "up" ? "+13.24%" : "-13.24%"}
-                </span>
+              <div className="hidden md:block">
+                <Trophy className={`h-24 w-24 ${totalSalesTrend === "up" ? "text-green-500" : "text-red-500"}`} />
               </div>
-            </div>
-            <div className="h-[100px] mt-4">
-              {loading.registrations ? (
-                <p>Loading...</p>
-              ) : error.registrations ? (
-                <p className="text-red-500">{error.registrations}</p>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={registrationsData}>
-                    <Area
-                      type="monotone"
-                      dataKey="totalRegistrations"
-                      stroke="#f97316"
-                      fill="#f97316"
-                      fillOpacity={0.2}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Reviews Card */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Reviews</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading.review ? (
+              <p>Loading...</p>
+            ) : error.review ? (
+              <p className="text-red-500">{error.review}</p>
+            ) : Array.isArray(reviewData) && reviewData.length > 0 ? (
+              // Aggregate GoodReviews and BadReviews
+              (() => {
+                const totalGoodReviews = reviewData.reduce(
+                  (sum, item) => sum + (item.goodReviews || 0),
+                  0
+                );
+                const totalBadReviews = reviewData.reduce(
+                  (sum, item) => sum + (item.badReviews || 0),
+                  0
+                );
+                const totalReviews = totalGoodReviews + totalBadReviews;
+                const goodPercentage = totalReviews
+                  ? ((totalGoodReviews / totalReviews) * 100).toFixed(2)
+                  : 0;
+                const badPercentage = totalReviews
+                  ? ((totalBadReviews / totalReviews) * 100).toFixed(2)
+                  : 0;
+
+                return (
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="flex items-center space-x-4">
+                      <span className="text-5xl">😊</span>
+                      <div className="flex flex-col items-start">
+                        <span className="text-xl font-bold">{totalGoodReviews}</span>
+                        <span className="text-sm">Good Reviews</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <span className="text-5xl">😞</span>
+                      <div className="flex flex-col items-start">
+                        <span className="text-xl font-bold">{totalBadReviews}</span>
+                        <span className="text-sm">Bad Reviews</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-muted-foreground">
+                        Good Reviews: {goodPercentage}%
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        Bad Reviews: {badPercentage}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()
+            ) : (
+              <p>No review data available for the selected time frame.</p>
+            )}
           </CardContent>
         </Card>
       </div>
-
       {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-3">
         {/* Sales Card */}
@@ -497,7 +618,7 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Grid */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-1">
         {/* Total Revenue Chart */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -508,7 +629,7 @@ export default function Dashboard() {
               <p>Loading...</p>
             ) : error.revenue ? (
               <p className="text-red-500">{error.revenue}</p>
-            ) : (
+            ) : Array.isArray(totalRevenueData) && totalRevenueData.length > 0 ? (
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={totalRevenueData}>
@@ -525,9 +646,13 @@ export default function Dashboard() {
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
+            ) : (
+              <p>No revenue data available.</p>
             )}
           </CardContent>
         </Card>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
 
         {/* Performance Chart */}
         <Card>
@@ -536,16 +661,16 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {loading.sales ||
-            loading.transactions ||
-            loading.registrations ||
-            loading.revenue ? (
+              loading.revenue ||
+              loading.transactions ||
+              loading.review ? (
               <p>Loading...</p>
             ) : error.sales ||
+              error.revenue ||
               error.transactions ||
-              error.registrations ||
-              error.revenue ? (
+              error.review ? (
               <p className="text-red-500">Error loading performance data</p>
-            ) : (
+            ) : performanceData.length > 0 ? (
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={performanceData}>
@@ -571,6 +696,61 @@ export default function Dashboard() {
                   </RadarChart>
                 </ResponsiveContainer>
               </div>
+            ) : (
+              <p>No performance data available.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Users by Status Widget */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Users by Status</CardTitle>
+            <Select
+              value={usersTimeFrame}
+              onValueChange={(value) => handleTimeFrameChange("users", value)}
+            >
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Select time" />
+              </SelectTrigger>
+              <SelectContent>
+                {TIME_FRAMES.map((tf) => (
+                  <SelectItem key={tf.value} value={tf.value}>
+                    {tf.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardHeader>
+          <CardContent>
+            {loading.users ? (
+              <p>Loading...</p>
+            ) : error.users ? (
+              <p className="text-red-500">{error.users}</p>
+            ) : Array.isArray(usersData) && usersData.length > 0 ? (
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={usersData}
+                      dataKey="totalUsers"
+                      nameKey="status"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label
+                    >
+                      {usersData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p>No user data available for the selected time frame.</p>
             )}
           </CardContent>
         </Card>
@@ -579,16 +759,14 @@ export default function Dashboard() {
       {/* Products by Category */}
       <Card className="w-full">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Products by Category
-          </CardTitle>
+          <CardTitle className="text-sm font-medium">Products by Category</CardTitle>
         </CardHeader>
         <CardContent>
           {loading.products ? (
             <p>Loading...</p>
           ) : error.products ? (
             <p className="text-red-500">{error.products}</p>
-          ) : (
+          ) : Array.isArray(productsData) && productsData.length > 0 ? (
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={productsData}>
@@ -613,6 +791,8 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+          ) : (
+            <p>No product category data available.</p>
           )}
         </CardContent>
       </Card>
