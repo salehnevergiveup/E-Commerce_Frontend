@@ -34,6 +34,9 @@ import AdminLayout from "@/layouts/admin-layout";
 import sendRequest from "@/services/requests/request-service"; // Adjust the import path as needed
 import RequestMethods from "@/enums/request-methods"; // Adjust the import path as needed
 
+// Import ReviewCard component
+import { ReviewCard } from "@/components/review-card"; // Ensure this path is correct
+
 export default function ViewUser() {
   const router = useRouter();
   const { id } = router.query;
@@ -45,6 +48,11 @@ export default function ViewUser() {
 
   // **Added state for search query**
   const [searchQuery, setSearchQuery] = useState(""); // To store the search input
+
+  // **Added states for reviews**
+  const [reviews, setReviews] = useState([]); // To store reviews
+  const [reviewsLoading, setReviewsLoading] = useState(true); // To manage loading state for reviews
+  const [reviewsError, setReviewsError] = useState(null); // To handle errors while fetching reviews
 
   useEffect(() => {
     if (!id) {
@@ -77,8 +85,63 @@ export default function ViewUser() {
       }
     };
 
-    fetchUserData();
+    const fetchReviews = async () => {
+      try {
+        setReviewsLoading(true);
+        const response = await sendRequest(
+          RequestMethods.GET,
+          `/review/${id}?Type=saler`, // Adjust the endpoint as per your backend API
+          null,
+          true // requireAuth
+        );
+        if (response.success) {
+          setReviews(response.data); // Assuming response.data is an array of ReviewDTO
+        } else {
+          toast.error(response.message || "Failed to fetch reviews.");
+          setReviewsError(response.message || "Failed to fetch reviews.");
+        }
+      } catch (err) {
+        toast.error(err.message || "Error fetching reviews.");
+        setReviewsError(err.message || "Error fetching reviews.");
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
+    const initialize = async () => {
+      await fetchUserData();
+      // Optionally, load reviews here
+      await fetchReviews();
+    };
+
+    if (id) {
+      initialize();
+    }
   }, [id, router]);
+
+  // Function to load reviews when Reviews tab is selected
+  const loadReviews = async () => {
+    try {
+      setReviewsLoading(true);
+      const response = await sendRequest(
+        RequestMethods.GET,
+        `/admin/reviews/${id}`, // Adjust the endpoint for admin
+        null,
+        true
+      );
+      if (response.success) {
+        setReviews(response.data); // Assuming response.data is an array of ReviewDTO
+      } else {
+        toast.error(response.message || "Failed to fetch reviews.");
+        setReviewsError(response.message || "Failed to fetch reviews.");
+      }
+    } catch (err) {
+      toast.error(err.message || "Error fetching reviews.");
+      setReviewsError(err.message || "Error fetching reviews.");
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
 
   // Handler functions
   const handleEdit = () => {
@@ -143,12 +206,12 @@ export default function ViewUser() {
   const avatarMedia = user.medias.find((media) => media.type === "User_Profile");
   const coverMedia = user.medias.find((media) => media.type === "User_Cover");
 
-  // **Filter the product list based on search query**
-  const filteredProductList = user.productList
-    ? user.productList.filter((product) =>
-      product.title.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    : [];
+  // **Filter the product list based on search query (Removed since Listings Tab is removed)**
+  // const filteredProductList = user.productList
+  //   ? user.productList.filter((product) =>
+  //     product.title.toLowerCase().includes(searchQuery.toLowerCase())
+  //   )
+  //   : [];
 
   return (
     <div className="container mx-auto px-4">
@@ -232,8 +295,8 @@ export default function ViewUser() {
         </CardContent>
       </Card>
 
-      {/* Listings Section */}
-      {user.roleType.toLowerCase() === "admin" || user.roleType.toLowerCase() === "superadmin" ? (
+      {/* Admin View Section */}
+      {(user.roleType.toLowerCase() === "admin" || user.roleType.toLowerCase() === "superadmin") && (
         <Card className="mb-6 mt-6">
           <CardHeader>
             <CardTitle className="text-2xl font-bold flex items-center">
@@ -282,74 +345,58 @@ export default function ViewUser() {
             </div>
           </CardContent>
         </Card>
-      ) : (
-        <Tabs defaultValue="listings" className="mt-6">
-          <TabsList>
-            <TabsTrigger value="listings">Listings</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="listings" className="mt-4">
-            {/* Search Section */}
-            <div className="flex items-center mb-4">
-              <div className="relative w-72">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search listings..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Listings Grid */}
-            {filteredProductList && filteredProductList.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProductList.map((product) => (
-                  <Link href={`/admin/products/view/${product.id}`} key={product.id}>
-                    <Card className="cursor-pointer hover:shadow-lg transition-shadow duration-200">
-                      <CardContent className="p-4">
-                        <Image
-                          src={product.image || "/placeholder.svg"}
-                          alt={product.title}
-                          width={300}
-                          height={200}
-                          className="w-full h-48 object-cover mb-4 rounded"
-                        />
-                        <h3 className="font-semibold mb-2">{product.title}</h3>
-                        <p className="text-lg font-bold mb-2">
-                          RM{product.price.toFixed(2)}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Listed on{" "}
-                          {new Date(product.createdAt).toLocaleDateString()}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {product.refundGuaranteedDuration} days refund guarantee
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <Card className="border-dashed">
-                <CardContent className="p-12 text-center">
-                  <div className="flex justify-center mb-4">
-                    <Telescope className="h-12 w-12 text-orange-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    @{user.name.toLowerCase().replace(/\s+/g, '')} has no products matching your search.
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Try adjusting your search or explore other listings.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
       )}
+
+      {/* Tabs Section - Removed Listings Tab and Added Reviews Tab */}
+      <Tabs
+        defaultValue="reviews"
+        className="mt-6"
+        onValueChange={(value) => {
+          if (value === "reviews") loadReviews();
+          // Handle other tabs if necessary
+        }}
+      >
+        <TabsList>
+          <TabsTrigger value="reviews">Reviews</TabsTrigger> {/* Added Reviews Tab */}
+          {/* Removed Listings Tab */}
+        </TabsList>
+
+        <TabsContent value="reviews" className="mt-4">
+          {/* Reviews Tab Content */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">User Reviews</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {reviewsLoading ? (
+                <p>Loading reviews...</p>
+              ) : reviewsError ? (
+                <p className="text-red-500">Error: {reviewsError}</p>
+              ) : reviews.length > 0 ? (
+                <div className="space-y-4">
+                  {reviews.map((review) => (
+                    <ReviewCard key={review.id} review={review} />
+                  ))}
+                </div>
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="p-12 text-center">
+                    <div className="flex justify-center mb-4">
+                      <Telescope className="h-12 w-12 text-orange-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">
+                      No Reviews Found
+                    </h3>
+                    <p className="text-muted-foreground">
+                      This user has not received any reviews yet.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* User Details Cards */}
 

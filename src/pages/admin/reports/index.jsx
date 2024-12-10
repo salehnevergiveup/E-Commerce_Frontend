@@ -32,7 +32,7 @@ const TIME_FRAMES = [
 ];
 
 // Colors for charts
-const COLORS = ['#f97316', '#fb923c', '#fdba74', '#fed7aa'];
+const COLORS = ['#f97316', '#fb923c', '#fdba74', '#fed7aa', '#4ade80', '#f87171']; // Extended for more charts
 
 export default function ReportsDashboard() {
   // State for Total Sales
@@ -53,9 +53,13 @@ export default function ReportsDashboard() {
   const [transactionsTimeFrame, setTransactionsTimeFrame] = useState('monthly');
   const [transactionsData, setTransactionsData] = useState([]);
 
-  // State for Registrations Report
-  const [registrationsTimeFrame, setRegistrationsTimeFrame] = useState('monthly');
-  const [registrationsData, setRegistrationsData] = useState([]);
+  // *** Removed Registrations Report State ***
+  // const [registrationsTimeFrame, setRegistrationsTimeFrame] = useState('monthly');
+  // const [registrationsData, setRegistrationsData] = useState([]);
+
+  // State for Reviews Report (Replaces Registrations)
+  const [reviewsTimeFrame, setReviewsTimeFrame] = useState('monthly');
+  const [reviewsData, setReviewsData] = useState([]);
 
   // State for Users by Status
   const [usersTimeFrame, setUsersTimeFrame] = useState('monthly');
@@ -69,7 +73,8 @@ export default function ReportsDashboard() {
   const [loading, setLoading] = useState({
     sales: false,
     transactions: false,
-    registrations: false,
+    // registrations: false, // *** Removed ***
+    reviews: false, // *** Added for Reviews ***
     revenue: false,
     users: false,
     products: false
@@ -79,7 +84,8 @@ export default function ReportsDashboard() {
   const [error, setError] = useState({
     sales: null,
     transactions: null,
-    registrations: null,
+    // registrations: null, // *** Removed ***
+    reviews: null, // *** Added for Reviews ***
     revenue: null,
     users: null,
     products: null
@@ -95,6 +101,22 @@ export default function ReportsDashboard() {
     }).format(value);
   };
 
+  // Helper function to get current and previous values for trend calculation
+  const getCurrentAndPrevious = (data, valueKey) => {
+    if (!data || data.length === 0) {
+      return { current: 0, previous: 0 };
+    }
+    const sortedData = [...data].sort(
+      (a, b) => new Date(a.groupingKey) - new Date(b.groupingKey)
+    );
+    const lastIndex = sortedData.length - 1;
+    const current = sortedData[lastIndex][valueKey] || 0;
+    const previous = sortedData[lastIndex - 1]
+      ? sortedData[lastIndex - 1][valueKey]
+      : 0;
+    return { current, previous };
+  };
+
   // Fetch functions for each report
   const fetchSalesData = async (timeFrame) => {
     setLoading(prev => ({ ...prev, sales: true }));
@@ -108,19 +130,20 @@ export default function ReportsDashboard() {
         true
       );
       console.log("Sales data fetched: ", response.data);
-      setSalesData(response.data);
-      setTotalSalesData(response.data);
+      setSalesData(Array.isArray(response.data) ? response.data : []);
+      setTotalSalesData(Array.isArray(response.data) ? response.data : []);
 
       // Calculate trend
-      if (response.data.length >= 2) {
-        const currentTotal = response.data[response.data.length - 1].totalSalesAmount;
-        const previousTotal = response.data[response.data.length - 2].totalSalesAmount;
-        setTotalSalesTrend(currentTotal >= previousTotal ? 'up' : 'down');
+      if (Array.isArray(response.data) && response.data.length >= 2) {
+        const { current, previous } = getCurrentAndPrevious(response.data, "totalSalesAmount");
+        setTotalSalesTrend(current >= previous ? 'up' : 'down');
       } else {
         setTotalSalesTrend(null);
       }
     } catch (err) {
       setError(prev => ({ ...prev, sales: err.message || 'Error fetching sales data' }));
+      setSalesData([]); // Reset to empty array on error
+      setTotalSalesData([]);
     } finally {
       setLoading(prev => ({ ...prev, sales: false }));
     }
@@ -138,31 +161,34 @@ export default function ReportsDashboard() {
         true
       );
       console.log("Fetch transaction data: ", response.data);
-      setTransactionsData(response.data);
+      setTransactionsData(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       setError(prev => ({ ...prev, transactions: err.message || 'Error fetching transactions data' }));
+      setTransactionsData([]); // Reset to empty array on error
     } finally {
       setLoading(prev => ({ ...prev, transactions: false }));
     }
   };
-
-  const fetchRegistrationsData = async (timeFrame) => {
-    setLoading(prev => ({ ...prev, registrations: true }));
-    setError(prev => ({ ...prev, registrations: null }));
+  
+  // *** Added Reviews Fetch Function ***
+  const fetchReviewsData = async (timeFrame) => {
+    setLoading(prev => ({ ...prev, reviews: true }));
+    setError(prev => ({ ...prev, reviews: null }));
     try {
       const payload = { timeFrame };
       const response = await sendRequest(
         RequestMethods.POST,
-        `/report/registrations`,
+        `/report/reviews`,
         payload,
         true
       );
-      console.log("Registration data:", response.data);
-      setRegistrationsData(response.data);
+      console.log("Fetch review data:", response.data);
+      setReviewsData(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
-      setError(prev => ({ ...prev, registrations: err.message || 'Error fetching registrations data' }));
+      setError(prev => ({ ...prev, reviews: err.message || 'Error fetching review data' }));
+      setReviewsData([]); // Reset to empty array on error
     } finally {
-      setLoading(prev => ({ ...prev, registrations: false }));
+      setLoading(prev => ({ ...prev, reviews: false }));
     }
   };
 
@@ -178,18 +204,18 @@ export default function ReportsDashboard() {
         true
       );
       console.log("Fetch revenue data:", response.data);
-      setTotalRevenueData(response.data);
+      setTotalRevenueData(Array.isArray(response.data) ? response.data : []);
 
       // Calculate trend
-      if (response.data.length >= 2) {
-        const currentTotal = response.data[response.data.length - 1].totalRevenue;
-        const previousTotal = response.data[response.data.length - 2].totalRevenue;
-        setTotalRevenueTrend(currentTotal >= previousTotal ? 'up' : 'down');
+      if (Array.isArray(response.data) && response.data.length >= 2) {
+        const { current, previous } = getCurrentAndPrevious(response.data, "totalRevenue");
+        setTotalRevenueTrend(current >= previous ? 'up' : 'down');
       } else {
         setTotalRevenueTrend(null);
       }
     } catch (err) {
       setError(prev => ({ ...prev, revenue: err.message || 'Error fetching revenue data' }));
+      setTotalRevenueData([]); // Reset to empty array on error
     } finally {
       setLoading(prev => ({ ...prev, revenue: false }));
     }
@@ -207,9 +233,10 @@ export default function ReportsDashboard() {
         true
       );
       console.log("Fetch user data: ", response.data);
-      setUsersData(response.data);
+      setUsersData(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       setError(prev => ({ ...prev, users: err.message || 'Error fetching users data' }));
+      setUsersData([]); // Reset to empty array on error
     } finally {
       setLoading(prev => ({ ...prev, users: false }));
     }
@@ -227,9 +254,10 @@ export default function ReportsDashboard() {
         true
       );
       console.log("Product category data:", response.data);
-      setProductsData(response.data);
+      setProductsData(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       setError(prev => ({ ...prev, products: err.message || 'Error fetching products data' }));
+      setProductsData([]); // Reset to empty array on error
     } finally {
       setLoading(prev => ({ ...prev, products: false }));
     }
@@ -239,7 +267,8 @@ export default function ReportsDashboard() {
   useEffect(() => {
     fetchSalesData('monthly');
     fetchTransactionsData('monthly');
-    fetchRegistrationsData('monthly');
+    // fetchRegistrationsData('monthly'); // *** Removed ***
+    fetchReviewsData('monthly'); // *** Added for Reviews ***
     fetchRevenueData('monthly');
     fetchUsersData('monthly');
     fetchProductsData('monthly');
@@ -253,9 +282,14 @@ export default function ReportsDashboard() {
     } else if (widget === 'transactions') {
       setTransactionsTimeFrame(value);
       fetchTransactionsData(value);
-    } else if (widget === 'registrations') {
-      setRegistrationsTimeFrame(value);
-      fetchRegistrationsData(value);
+    } 
+    // else if (widget === 'registrations') { // *** Removed ***
+    //   setRegistrationsTimeFrame(value);
+    //   fetchRegistrationsData(value);
+    // }
+    else if (widget === 'reviews') { // *** Added ***
+      setReviewsTimeFrame(value);
+      fetchReviewsData(value);
     } else if (widget === 'revenue') {
       setTotalRevenueTimeFrame(value);
       fetchRevenueData(value);
@@ -278,6 +312,20 @@ export default function ReportsDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+            <Select
+              value={totalSalesTimeFrame}
+              onValueChange={(value) => handleTimeFrameChange('sales', value)}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Select time" />
+              </SelectTrigger>
+              <SelectContent>
+                {TIME_FRAMES.map((tf) => (
+                  <SelectItem key={tf.value} value={tf.value}>
+                    {tf.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent className="flex items-center justify-between">
             <div className="text-2xl font-bold">
@@ -301,11 +349,28 @@ export default function ReportsDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <Select
+              value={totalRevenueTimeFrame}
+              onValueChange={(value) => handleTimeFrameChange('revenue', value)}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Select time" />
+              </SelectTrigger>
+              <SelectContent>
+                {TIME_FRAMES.map((tf) => (
+                  <SelectItem key={tf.value} value={tf.value}>
+                    {tf.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent className="flex items-center justify-between">
             <div className="text-2xl font-bold">
               {formatValue(
-                totalRevenueData.reduce((sum, item) => sum + (item.totalRevenue || 0), 0)
+                totalRevenueData.reduce(
+                  (sum, item) => sum + (item.totalRevenue || 0),
+                  0
+                ) || 0
               )}
             </div>
             <div className={`flex items-center ${totalRevenueTrend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
@@ -344,6 +409,8 @@ export default function ReportsDashboard() {
               <p>Loading...</p>
             ) : error.sales ? (
               <p className="text-red-500">{error.sales}</p>
+            ) : (!salesData || salesData.length === 0) ? (
+              <p>No sales data available for the selected time frame.</p>
             ) : (
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -384,6 +451,8 @@ export default function ReportsDashboard() {
               <p>Loading...</p>
             ) : error.transactions ? (
               <p className="text-red-500">{error.transactions}</p>
+            ) : (!transactionsData || transactionsData.length === 0) ? (
+              <p>No transaction data available for the selected time frame.</p>
             ) : (
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -405,7 +474,7 @@ export default function ReportsDashboard() {
         </Card>
       </div>
 
-      {/* Row 3: Revenue Chart */}
+      {/* Row 3: Revenue Chart =>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> please don't delete this section it is the Revenue  section */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Revenue Chart</CardTitle>
@@ -448,7 +517,7 @@ export default function ReportsDashboard() {
         </CardContent>
       </Card>
 
-      {/* Row 4: Users by Status and Registrations Report */}
+      {/* Row 4: Users by Status and Reviews Report */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Users by Status Widget */}
         <Card>
@@ -474,6 +543,8 @@ export default function ReportsDashboard() {
               <p>Loading...</p>
             ) : error.users ? (
               <p className="text-red-500">{error.users}</p>
+            ) : (!usersData || usersData.length === 0) ? (
+              <p>No user data available for the selected time frame.</p>
             ) : (
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -499,13 +570,13 @@ export default function ReportsDashboard() {
           </CardContent>
         </Card>
 
-        {/* Registrations Report Widget */}
+        {/* Reviews Report Widget*/}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Registrations</CardTitle>
+            <CardTitle className="text-sm font-medium">Reviews</CardTitle>
             <Select
-              value={registrationsTimeFrame}
-              onValueChange={(value) => handleTimeFrameChange('registrations', value)}>
+              value={reviewsTimeFrame}
+              onValueChange={(value) => handleTimeFrameChange('reviews', value)}>
               <SelectTrigger className="w-[120px]">
                 <SelectValue placeholder="Select time" />
               </SelectTrigger>
@@ -519,19 +590,23 @@ export default function ReportsDashboard() {
             </Select>
           </CardHeader>
           <CardContent>
-            {loading.registrations ? (
+            {loading.reviews ? (
               <p>Loading...</p>
-            ) : error.registrations ? (
-              <p className="text-red-500">{error.registrations}</p>
+            ) : error.reviews ? (
+              <p className="text-red-500">{error.reviews}</p>
+            ) : (!reviewsData || reviewsData.length === 0) ? (
+              <p>No review data available for the selected time frame.</p>
             ) : (
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={registrationsData}>
+                  <BarChart data={reviewsData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="groupingKey" />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="totalRegistrations" fill="#f97316" />
+                    <Legend />
+                    <Bar dataKey="goodReviews" fill="#4ade80" name="Good Reviews" />
+                    <Bar dataKey="badReviews" fill="#f87171" name="Bad Reviews" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -564,6 +639,8 @@ export default function ReportsDashboard() {
             <p>Loading...</p>
           ) : error.products ? (
             <p className="text-red-500">{error.products}</p>
+          ) : (!productsData || productsData.length === 0) ? (
+            <p>No product category data available for the selected time frame.</p>
           ) : (
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">

@@ -85,8 +85,6 @@ export default function UsersDashboard() {
       try {
         const response = await sendRequest(RequestMethods.GET, "users", null, true);
         if (response.success) {
-          console.log("users data fetched from the =================");
-          console.log(response.data);
           const mappedUsers = response.data.map((userObj) => {
             // Extract avatar (User_Profile) and cover (User_Cover) from medias
             const avatarMedia = userObj.medias.find(media => media.type === 'User_Profile');

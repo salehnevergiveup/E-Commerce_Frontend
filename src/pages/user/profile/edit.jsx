@@ -1,17 +1,15 @@
 // src/pages/profile/edit.js
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/router"; // Corrected import path
 import Image from "next/image";
 import { toast } from "react-toastify";
-
+import AuthGuard from "@/components/auth-guard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import UserLayout from "@/layouts/user-layout";
-import AuthGuard from "@/components/auth-guard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -30,11 +28,10 @@ import {
 import {
   Pencil,
   Upload,
-  Trash,
+  Trash2,
   Eye,
   EyeOff,
   ArrowLeft,
-  AlertTriangle,
 } from "lucide-react";
 
 import sendRequest from "@/services/requests/request-service"; // Ensure correct path
@@ -42,7 +39,10 @@ import RequestMethods from "@/enums/request-methods"; // Ensure correct path
 
 import { useAuth } from "@/contexts/auth-context"; // Import useAuth for authentication context
 
-// Import AlertDialog components
+import UserLayout from "@/layouts/user-layout"; // Changed to UserLayout
+
+import S3MediaFacade from "@/services/mediaService/handle-media"; // Import S3MediaFacade
+
 import {
   AlertDialog,
   AlertDialogContent,
@@ -66,9 +66,9 @@ function EditProfilePage() {
     age: "",
     phoneNumber: "",
     billingAddress: "",
-    avatar: "",
-    userCover: "",
+    medias: [], // Unified medias array
   });
+  const [originalMedias, setOriginalMedias] = useState([]); // Track original medias for deletions
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -113,9 +113,11 @@ function EditProfilePage() {
             age: fetchedUser.age ? fetchedUser.age.toString() : "",
             phoneNumber: fetchedUser.phoneNumber || "",
             billingAddress: fetchedUser.billingAddress || "",
-            avatar: fetchedUser.avatar || "",
-            userCover: fetchedUser.userCover || "",
+            medias: fetchedUser.medias || [], // Unified medias array
           });
+
+          // Set originalMedias for tracking deletions
+          setOriginalMedias(fetchedUser.medias || []);
         } else {
           setError(response.message || "Failed to fetch user data.");
         }
@@ -133,27 +135,169 @@ function EditProfilePage() {
   // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setUser({ ...user, [name]: value });
+    setUser(prevUser => ({ ...prevUser, [name]: value }));
   };
 
   // Handle password form changes
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
-    setPasswordForm({ ...passwordForm, [name]: value });
+    setPasswordForm(prevForm => ({ ...prevForm, [name]: value }));
   };
 
-  // Handle image uploads
-  const handleImageUpload = (type, file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        setUser({ ...user, [type]: e.target.result });
+  /**
+   * Centralized method to send a PUT request with all user data to update the backend.
+   */
+  const sendUserUpdate = async (updatedMedias) => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Prepare the payload including medias
+      const payload = {
+        userName: user.userName,
+        name: user.name,
+        email: user.email,
+        gender: user.gender, // "M" or "F"
+        age: parseInt(user.age),
+        status: "", // Assuming status is not editable in profile
+        roleId: 0, // Assuming role is not editable in profile
+        phoneNumber: user.phoneNumber,
+        billingAddress: user.billingAddress,
+        medias: updatedMedias ? updatedMedias : user.medias.map(media => ({
+          id: media.id,
+          type: media.type,
+          mediaUrl: media.mediaUrl,
+        })),
+      };
+
+      // Make the PUT request to update the user information
+      const updateResponse = await sendRequest(
+        RequestMethods.PUT,
+        `/users/${authUser.id}`,
+        payload,
+        true // requireAuth
+      );
+
+      if (updateResponse.success) {
+        toast.success("Profile updated successfully.");
+      } else {
+        setError(updateResponse.message || "Failed to update profile.");
+        toast.error(updateResponse.message || "Failed to update profile.");
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Error updating profile:", err);
+      setError(err.message || "Failed to update profile.");
+      toast.error(err.message || "Failed to update profile.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Handle profile update
+  /**
+   * Handle uploading or updating media.
+   * Updates the user state and sends the comprehensive PUT request to the backend.
+   * @param {string} url - Current media URL (for existing media)
+   * @param {string} type - Type of media ('User_Profile' or 'User_Cover')
+   * @param {File} file - The file to upload
+   */
+  const handleUploadOrUpdateMedia = async (url, type, file) => {
+    if (!file) return;
+
+    try {
+      let updatedMedias = [...user.medias];
+
+      // Check if media of this type already exists
+      const existingMediaIndex = updatedMedias.findIndex(media => media.type === type);
+      if (existingMediaIndex !== -1) {
+        // Media exists, perform update
+        const existingMedia = updatedMedias[existingMediaIndex];
+
+        // Upload new media to S3 and get the new URL
+        const updateMediaArray = [{
+          id: existingMedia.id,
+          type: existingMedia.type,
+          file: file,
+          url: existingMedia.mediaUrl,
+        }];
+
+        const updateResponse = await S3MediaFacade.updateMedias(user.medias, updateMediaArray);
+
+        if (updateResponse && updateResponse.updatedMediaArray) {
+          // Update the media in the state
+          setUser(prevUser => ({
+            ...prevUser,
+            medias: updateResponse.updatedMediaArray,
+          }));
+
+          await sendUserUpdate(updateResponse.updatedMediaArray);
+        }
+
+      } else {
+        // Media does not exist, perform upload
+        const uploadedMedias = await S3MediaFacade.uploadMedias([{ file, type }]);
+
+        if (uploadedMedias.length > 0) {
+          const uploadedMedia = uploadedMedias[0];
+          updatedMedias.push(uploadedMedia);
+
+          setUser(prevUser => ({
+            ...prevUser,
+            medias: updatedMedias,
+          }));
+
+          await sendUserUpdate(updatedMedias);
+        }
+      }
+    } catch (error) {
+      console.error(`Error handling ${type}:`, error);
+      toast.error(`Error handling ${type}.`);
+    }
+  };
+
+  /**
+   * Handle deleting media.
+   * Updates the user state and sends the comprehensive PUT request to the backend.
+   * @param {string} type - Type of media ('User_Profile' or 'User_Cover')
+   */
+  const handleDeleteMedia = async (type) => {
+    const confirmDelete = window.confirm(`Are you sure you want to delete the ${type.replace('_', ' ')}?`);
+    if (!confirmDelete) return;
+
+    try {
+      const mediaToDelete = user.medias.find(media => media.type === type);
+      if (!mediaToDelete || !mediaToDelete.mediaUrl) {
+        toast.error(`No ${type.replace('_', ' ')} found to delete.`);
+        return;
+      }
+
+      await S3MediaFacade.deleteMedias([mediaToDelete.mediaUrl]);
+
+      const updatedMedias = user.medias.filter(media => media.type !== type);
+
+      setUser(prevUser => ({
+        ...prevUser,
+        medias: updatedMedias,
+      }));
+
+      toast.success(`${type.replace('_', ' ')} deleted successfully.`);
+
+      await sendUserUpdate(updatedMedias);
+    } catch (error) {
+      console.error(`Error deleting ${type}:`, error);
+      toast.error(`Error deleting ${type}.`);
+    }
+  };
+
+  // Function to get media URL based on type
+  const getMediaUrl = (type) => {
+    const media = user.medias.find(media => media.type === type);
+    return media ? media.mediaUrl : "";
+  };
+
+  // Extract avatar and cover from medias array
+  const avatar = getMediaUrl("User_Profile");
+  const userCover = getMediaUrl("User_Cover");
+
+  // Handle profile update submission
   const handleUpdate = async () => {
     // Validate required fields
     if (
@@ -167,42 +311,7 @@ function EditProfilePage() {
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      const payload = {
-        userName: user.userName,
-        name: user.name,
-        email: user.email,
-        gender: user.gender,
-        age: parseInt(user.age),
-        status: "",
-        roleId: 0,
-        phoneNumber: user.phoneNumber,
-        billingAddress: user.billingAddress,
-        avatar: user.avatar,
-        userCover: user.userCover,
-      };
-      console.log("the id of the auth user id", authUser.id);
-      const updateResponse = await sendRequest(
-        RequestMethods.PUT,
-        `/users/${authUser.id}`,
-        payload,
-        true
-      );
-      console.log(updateResponse);
-      if (updateResponse.success) {
-        toast.success("Profile updated successfully.");
-      } else {
-        setError(updateResponse.message || "Failed to update profile.");
-      }
-    } catch (err) {
-      console.error("Error updating profile:", err);
-      setError(err.message || "Failed to update profile.");
-    } finally {
-      setLoading(false);
-    }
+    await sendUserUpdate();
   };
 
   // Handle password update
@@ -241,9 +350,8 @@ function EditProfilePage() {
         RequestMethods.POST,
         `/authentication/change-password`, // Correct Endpoint
         payload,
-        true // Adjust based on auth requirements
+        true // requireAuth
       );
-      console.log("the response after the password changed", passwordResponse);
 
       if (passwordResponse.success) {
         toast.success("Password updated successfully.");
@@ -254,10 +362,12 @@ function EditProfilePage() {
         });
       } else {
         setError(passwordResponse.message || "Failed to update password.");
+        toast.error(passwordResponse.message || "Failed to update password.");
       }
     } catch (err) {
       console.error("Error updating password:", err);
       setError(err.message || "Failed to update password.");
+      toast.error(err.message || "Failed to update password.");
     } finally {
       setLoading(false);
     }
@@ -285,10 +395,12 @@ function EditProfilePage() {
         router.push("/"); // Redirect to the homepage or login page
       } else {
         setError(deleteResponse.message || "Failed to delete account.");
+        toast.error(deleteResponse.message || "Failed to delete account.");
       }
     } catch (err) {
       console.error("Error deleting account:", err);
       setError(err.message || "Failed to delete account.");
+      toast.error(err.message || "Failed to delete account.");
     } finally {
       setLoading(false);
       setDeleteUserId(null); // Close the dialog
@@ -301,6 +413,7 @@ function EditProfilePage() {
 
   return (
     <div className="container mx-auto px-4">
+      {/* Back Button */}
       <Button
         variant="ghost"
         onClick={() => router.push("/user/profile")}
@@ -310,12 +423,12 @@ function EditProfilePage() {
         Back to Profile
       </Button>
 
-      {/* Cover Image with Delete Button */}
+      {/* Cover Image with Upload and Delete */}
       <div className="relative h-48 bg-orange-600 rounded-t-lg mb-16">
         <div className="absolute inset-0">
-          {user.userCover ? (
+          {userCover ? (
             <Image
-              src={user.userCover}
+              src={userCover}
               alt="Cover"
               layout="fill"
               className="w-full h-full object-cover rounded-t-lg"
@@ -324,29 +437,22 @@ function EditProfilePage() {
             <div className="w-full h-full bg-orange-600 rounded-t-lg"></div>
           )}
         </div>
+        {/* Upload Cover Image */}
         <Dialog open={coverDialogOpen} onOpenChange={setCoverDialogOpen}>
           <DialogTrigger asChild>
-            <Button
-              variant="secondary"
-              size="icon"
-              className="absolute bottom-2 right-2"
-            >
+            <Button variant="secondary" size="icon" className="absolute bottom-2 right-2">
               <Pencil className="h-4 w-4" />
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-white">
             <DialogHeader>
-              <DialogTitle className="text-center">
-                Upload Cover Image
-              </DialogTitle>
+              <DialogTitle className="text-center">Upload Cover Image</DialogTitle>
             </DialogHeader>
             <div className="flex items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
               <label htmlFor="cover-upload" className="cursor-pointer">
                 <div className="flex flex-col items-center">
                   <Upload className="h-12 w-12 text-orange-400" />
-                  <span className="mt-2 text-sm text-gray-500">
-                    Choose a cover image to upload
-                  </span>
+                  <span className="mt-2 text-sm text-gray-500">Choose a cover image to upload</span>
                 </div>
                 <input
                   id="cover-upload"
@@ -355,7 +461,7 @@ function EditProfilePage() {
                   accept="image/*"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleImageUpload("userCover", file);
+                    if (file) handleUploadOrUpdateMedia(userCover, "User_Cover", file);
                     setCoverDialogOpen(false);
                   }}
                 />
@@ -364,15 +470,19 @@ function EditProfilePage() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Account Button Positioned at Top Right */}
-        <Button
-          variant="destructive"
-          size="icon"
-          className="absolute top-2 right-2"
-          onClick={() => setDeleteUserId(authUser.id)}
-        >
-          <Trash className="h-4 w-4" />
-        </Button>
+        {/* Delete Cover Image */}
+        {userCover && (
+          <Button
+            variant="destructive"
+            size="icon"
+            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"
+            onClick={() => handleDeleteMedia('User_Cover')}
+            title="Delete Cover Image"
+            aria-label="Delete Cover Image"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Profile Card */}
@@ -381,45 +491,30 @@ function EditProfilePage() {
           <div className="flex items-start gap-6">
             <div className="relative">
               <Avatar className="h-24 w-24 border-4 border-white">
-                {user.avatar ? (
-                  <AvatarImage
-                    src={user.avatar || "/placeholder.svg"}
-                    alt={user.name}
-                  />
+                {avatar ? (
+                  <AvatarImage src={avatar || "/placeholder.svg"} alt={user.name || "User Avatar"} />
                 ) : (
                   <AvatarFallback>
-                    {user.userName
-                      ? user.userName.charAt(0).toUpperCase()
-                      : "U"}
+                    {user.userName ? user.userName.charAt(0).toUpperCase() : "U"}
                   </AvatarFallback>
                 )}
               </Avatar>
-              <Dialog
-                open={avatarDialogOpen}
-                onOpenChange={setAvatarDialogOpen}
-              >
+              {/* Upload Avatar */}
+              <Dialog open={avatarDialogOpen} onOpenChange={setAvatarDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="absolute bottom-0 right-0"
-                  >
+                  <Button variant="secondary" size="icon" className="absolute bottom-0 right-0">
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="bg-white">
                   <DialogHeader>
-                    <DialogTitle className="text-center">
-                      Upload Avatar
-                    </DialogTitle>
+                    <DialogTitle>Upload Avatar</DialogTitle>
                   </DialogHeader>
                   <div className="flex items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
                     <label htmlFor="avatar-upload" className="cursor-pointer">
                       <div className="flex flex-col items-center">
                         <Upload className="h-12 w-12 text-orange-400" />
-                        <span className="mt-2 text-sm text-gray-500">
-                          Upload avatar
-                        </span>
+                        <span className="mt-2 text-sm text-gray-500">Upload avatar</span>
                       </div>
                       <input
                         id="avatar-upload"
@@ -428,7 +523,7 @@ function EditProfilePage() {
                         accept="image/*"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) handleImageUpload("avatar", file);
+                          if (file) handleUploadOrUpdateMedia(avatar, 'User_Profile', file);
                           setAvatarDialogOpen(false);
                         }}
                       />
@@ -436,6 +531,19 @@ function EditProfilePage() {
                   </div>
                 </DialogContent>
               </Dialog>
+              {/* Delete Avatar */}
+              {avatar && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                  onClick={() => handleDeleteMedia('User_Profile')}
+                  title="Delete Avatar"
+                  aria-label="Delete Avatar"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
             <div className="flex-1">
               <h2 className="text-2xl font-bold">{user.name || "User Name"}</h2>
@@ -530,8 +638,8 @@ function EditProfilePage() {
                         user.gender === "M"
                           ? "Male"
                           : user.gender === "F"
-                          ? "Female"
-                          : ""
+                            ? "Female"
+                            : ""
                       }
                       onValueChange={(value) =>
                         handleInputChange({
@@ -611,6 +719,7 @@ function EditProfilePage() {
                         className="absolute inset-y-0 right-0 pr-3 flex items-center"
                         onClick={() => setShowCurrentPassword((prev) => !prev)}
                         type="button"
+                        aria-label={showCurrentPassword ? "Hide password" : "Show password"}
                       >
                         {showCurrentPassword ? (
                           <EyeOff className="h-4 w-4" />
@@ -640,6 +749,7 @@ function EditProfilePage() {
                         className="absolute inset-y-0 right-0 pr-3 flex items-center"
                         onClick={() => setShowNewPassword((prev) => !prev)}
                         type="button"
+                        aria-label={showNewPassword ? "Hide password" : "Show password"}
                       >
                         {showNewPassword ? (
                           <EyeOff className="h-4 w-4" />
@@ -669,6 +779,7 @@ function EditProfilePage() {
                         className="absolute inset-y-0 right-0 pr-3 flex items-center"
                         onClick={() => setShowConfirmPassword((prev) => !prev)}
                         type="button"
+                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                       >
                         {showConfirmPassword ? (
                           <EyeOff className="h-4 w-4" />
@@ -709,7 +820,7 @@ function EditProfilePage() {
             <AlertDialogTitle className="text-center">
               Delete User
             </AlertDialogTitle>
-            <AlertTriangle className="h-10 w-10 text-red-500" />
+            <Trash2 className="h-10 w-10 text-red-500" />
             <AlertDialogDescription className="text-center text-sm">
               This action cannot be undone. This will permanently delete the
               user account and remove their data from our servers.
@@ -741,7 +852,7 @@ const WrappedEditProfilePage = AuthGuard(EditProfilePage, {
   allowedRoles: ["user"],
 });
 
-// Ensure `getLayout` is passed along to the wrapped component
+// Ensure `getLayout` is preserved
 WrappedEditProfilePage.getLayout = EditProfilePage.getLayout;
 
 export default WrappedEditProfilePage;

@@ -19,7 +19,8 @@ import {
   LogOut,
   ShoppingBag,
   ShoppingCart,
-  File,
+  Star,
+  PieChart ,
 } from "lucide-react";
 
 
@@ -68,9 +69,16 @@ const navItems = [
     permissions: [Permissions.CAN_VIEW],
   },
   {
+    title: "Reviews",
+    href: "/admin/reviews",
+    icon: <Star className="h-5 w-5" />,
+    roles: [Roles.SUPER_ADMIN, Roles.ADMIN, Roles.USER],
+    permissions: [Permissions.CAN_VIEW],
+  },
+  {
     title: "Reports",
     href: "/admin/reports",
-    icon: <File className="h-5 w-5" />,
+    icon: <PieChart  className="h-5 w-5" />,
     roles: [Roles.SUPER_ADMIN, Roles.ADMIN, Roles.USER],
     permissions: [Permissions.CAN_VIEW],
   },
