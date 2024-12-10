@@ -65,36 +65,6 @@ export async function sendRequest(method, url, payload = null, requireAuth = fal
 }
 
 
-/**
- * Sends an HTTP request, handling media uploads/deletions if present.
- * @param {string} method - HTTP method (e.g., POST, PUT, DELETE).
- * @param {string} url - The endpoint URL.
- * @param {Object} payload - The request payload.
- * @param {boolean} requireAuth - Whether the request requires authentication.
- * @param {Object} [customHeaders={}] - Custom headers for the request.
- * @returns {Promise<Object>} - The response data or an error object.
- */
-export async function sendRequestTest(method, url, payload = null, requireAuth = false, customHeaders = {}) {
-  if (!Object.values(RequestMethod).includes(method)) {
-    throw new Error(`Invalid request method: ${method}`);
-  }
-
-  // Prepare the payload, handling media if necessary
-  const processedData = await prepareData(method, payload);
-
-  const headers = {
-    'Content-Type': 'application/json',
-    ...customHeaders,
-  };
-
-  const requestData = {
-    method,
-    url,
-    headers,
-    data: processedData,
-  };
 }
 
-}
-
-export default sendRequest; 
+export default sendRequest;
