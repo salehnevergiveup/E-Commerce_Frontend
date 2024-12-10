@@ -1,4 +1,5 @@
 import React from "react";
+import { useRouter } from "next/router";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ export default function Header() {
   const [registerDialogOpen, setRegisterDialogOpen] = React.useState(false);
   const [notifications, setNotifications] = useState([]); // State to store notifications
   const [connection, setConnection] = useState(null); // State for the SignalR connection
+  const router = useRouter();
 
   const { isAuthenticated, user, loading, logout } = useAuth(); // Access AuthContext
 
@@ -112,7 +114,7 @@ export default function Header() {
 
   const handleNotificationClick = (notificationId) => {
     // Redirect to the notification detail page
-    router.push(`/notifications/${notificationId}`);
+    router.push(`/user/profile?tab=notifications`);
   };
 
   // Function to handle logout
@@ -208,9 +210,7 @@ export default function Header() {
                       <React.Fragment key={index}>
                         <DropdownMenuItem
                           className="text-gray-700 dark:text-gray-200"
-                          onClick={() =>
-                            handleNotificationClick(notification.id)
-                          }
+                          onClick={handleNotificationClick}
                         >
                           <div className="flex flex-col w-full truncate">
                             {/* Title and Timestamp Container */}

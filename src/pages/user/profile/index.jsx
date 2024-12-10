@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -36,6 +38,10 @@ import RequestMethods from "@/enums/request-methods";
 function ProfilePage() {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab") || "listings"; // Default to "listings" if no 'tab' query parameter
+  console.log("Active tab from URL:", tab);
+
   const [userDetails, setUserDetails] = useState(null);
   const [balance, setBalance] = useState({
     availableBalance: 0,
@@ -102,6 +108,11 @@ function ProfilePage() {
       console.error("Error marking notifications as read:", error);
     }
   };
+
+  useEffect(() => {
+    console.log("Query parameters:", router.query);
+    //console.log("Active tab:", activeTab);
+  }, [router.query]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -236,8 +247,17 @@ function ProfilePage() {
       </Card>
       <div className="mt-6">
         <Tabs
-          defaultValue="listings"
+          value={tab} // Bind Tabs' value to the tab from URL
           onValueChange={(value) => {
+            router.push(
+              {
+                pathname: router.pathname, // Keep the current path
+                query: { ...Object.fromEntries(searchParams), tab: value }, // Update the 'tab' query parameter
+              },
+              undefined,
+              { shallow: true } // Prevent full page reload
+            );
+
             if (value === "balance") loadBalance();
             if (value === "notifications") loadNotifications();
           }}
