@@ -7,6 +7,8 @@ import AdminLayout from "@/layouts/admin-layout";
 import { useAuth } from "@/contexts/auth-context";
 import sendRequest from "@/services/requests/request-service";
 import RequestMethods from "@/enums/request-methods";
+import { Button } from "@/components/ui/button";
+
 import {
   Select,
   SelectContent,
@@ -308,7 +310,27 @@ export default function Dashboard() {
       setLoading((prev) => ({ ...prev, products: false }));
     }
   };
+  const handleJobRequest = async () => {
+    try {
+      const payload = { timeFrame };
+      await sendRequest(
+        RequestMethods.POST,
+        `/buyer-item/make-pay-to-user`,
+        payload,
+        true
+      );
 
+    } catch (err) {
+      console.error("Error fetching review data:", err);
+      setError((prev) => ({
+        ...prev,
+        review: err.message || "Error fetching review data",
+      }));
+      setReviewData([]); // Optionally set to empty array on error
+    } finally {
+      setLoading((prev) => ({ ...prev, review: false }));
+    }
+  }
   // Added Fetch Function for Review Report
   const fetchReviewData = async (timeFrame) => {
     setLoading((prev) => ({ ...prev, review: true }));
@@ -322,7 +344,7 @@ export default function Dashboard() {
         true
       );
       console.log("Fetch review data:", response.data);
-      if (Array.isArray(response.data)) {
+      if (Array?.isArray(response.data)) {
         setReviewData(response.data);
       } else {
         console.warn("Expected review data to be an array, but got:", response.data);
@@ -476,12 +498,19 @@ export default function Dashboard() {
                       ).toFixed(2)}
                       % from last month
                     </span>
+
                     {totalSalesTrend === "up" ? (
                       <TrendingUp className="h-4 w-4 text-green-500" />
                     ) : (
                       <TrendingUp className="h-4 w-4 text-red-500 transform rotate-180" />
                     )}
                   </div>
+                  {/* Create Button */}
+                  <Button className="bg-orange-500 hover:bg-orange-600 text-white mt-5"
+                  onClick={handleJobRequest} 
+                  >
+                    Schedule Paymnets <DollarSign/>
+                  </Button>
                 </div>
               </div>
               <div className="hidden md:block">

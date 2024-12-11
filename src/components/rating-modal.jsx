@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { X } from 'lucide-react';
 import {
@@ -27,7 +27,7 @@ export function RatingModal({
   onClose,
   productId
 }) {
-  const {user} = useAuth(); // Get authenticated user
+  const { user } = useAuth(); // Get authenticated user
   const product = mockProducts.find(p => p.id === productId);
   const [images, setImages] = useState([]); // Array of HandleMedia objects
   const [rating, setRating] = useState({
@@ -97,7 +97,7 @@ export function RatingModal({
   const calculateAverageRating = () => {
     const { seller_service, product_completion, product_packaging, product_price } = rating;
     const total = seller_service + product_completion + product_packaging + product_price;
-    return Math.round((total / 4) * 10) / 10; // Rounded to one decimal place
+    return Math.floor(Math.round((total / 4) * 10) / 10); // Rounded to one decimal place
   };
 
   // Handle form submission
@@ -162,12 +162,9 @@ export function RatingModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-white rounded-lg p-6">
+      <DialogContent className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-lg p-6">
         <DialogHeader className="flex justify-between items-center">
           <DialogTitle>Rate Your Purchase</DialogTitle>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="w-5 h-5" />
-          </button>
         </DialogHeader>
 
         <div className="space-y-4">

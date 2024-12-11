@@ -53,9 +53,6 @@ export default function ReportsDashboard() {
   const [transactionsTimeFrame, setTransactionsTimeFrame] = useState('monthly');
   const [transactionsData, setTransactionsData] = useState([]);
 
-  // *** Removed Registrations Report State ***
-  // const [registrationsTimeFrame, setRegistrationsTimeFrame] = useState('monthly');
-  // const [registrationsData, setRegistrationsData] = useState([]);
 
   // State for Reviews Report (Replaces Registrations)
   const [reviewsTimeFrame, setReviewsTimeFrame] = useState('monthly');
@@ -73,8 +70,7 @@ export default function ReportsDashboard() {
   const [loading, setLoading] = useState({
     sales: false,
     transactions: false,
-    // registrations: false, // *** Removed ***
-    reviews: false, // *** Added for Reviews ***
+    reviews: false,
     revenue: false,
     users: false,
     products: false
@@ -84,14 +80,12 @@ export default function ReportsDashboard() {
   const [error, setError] = useState({
     sales: null,
     transactions: null,
-    // registrations: null, // *** Removed ***
-    reviews: null, // *** Added for Reviews ***
+    reviews: null,
     revenue: null,
     users: null,
     products: null
   });
 
-  // Helper function to format currency
   const formatValue = (value) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -101,7 +95,6 @@ export default function ReportsDashboard() {
     }).format(value);
   };
 
-  // Helper function to get current and previous values for trend calculation
   const getCurrentAndPrevious = (data, valueKey) => {
     if (!data || data.length === 0) {
       return { current: 0, previous: 0 };
@@ -117,7 +110,6 @@ export default function ReportsDashboard() {
     return { current, previous };
   };
 
-  // Fetch functions for each report
   const fetchSalesData = async (timeFrame) => {
     setLoading(prev => ({ ...prev, sales: true }));
     setError(prev => ({ ...prev, sales: null }));
@@ -129,7 +121,7 @@ export default function ReportsDashboard() {
         payload,
         true
       );
-      console.log("Sales data fetched: ", response.data);
+
       setSalesData(Array.isArray(response.data) ? response.data : []);
       setTotalSalesData(Array.isArray(response.data) ? response.data : []);
 
@@ -160,7 +152,7 @@ export default function ReportsDashboard() {
         payload,
         true
       );
-      console.log("Fetch transaction data: ", response.data);
+
       setTransactionsData(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       setError(prev => ({ ...prev, transactions: err.message || 'Error fetching transactions data' }));
@@ -169,7 +161,7 @@ export default function ReportsDashboard() {
       setLoading(prev => ({ ...prev, transactions: false }));
     }
   };
-  
+
   // *** Added Reviews Fetch Function ***
   const fetchReviewsData = async (timeFrame) => {
     setLoading(prev => ({ ...prev, reviews: true }));
@@ -182,7 +174,7 @@ export default function ReportsDashboard() {
         payload,
         true
       );
-      console.log("Fetch review data:", response.data);
+      ;
       setReviewsData(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       setError(prev => ({ ...prev, reviews: err.message || 'Error fetching review data' }));
@@ -203,7 +195,7 @@ export default function ReportsDashboard() {
         payload,
         true
       );
-      console.log("Fetch revenue data:", response.data);
+
       setTotalRevenueData(Array.isArray(response.data) ? response.data : []);
 
       // Calculate trend
@@ -232,7 +224,7 @@ export default function ReportsDashboard() {
         payload,
         true
       );
-      console.log("Fetch user data: ", response.data);
+
       setUsersData(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       setError(prev => ({ ...prev, users: err.message || 'Error fetching users data' }));
@@ -253,7 +245,7 @@ export default function ReportsDashboard() {
         payload,
         true
       );
-      console.log("Product category data:", response.data);
+
       setProductsData(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       setError(prev => ({ ...prev, products: err.message || 'Error fetching products data' }));
@@ -282,7 +274,7 @@ export default function ReportsDashboard() {
     } else if (widget === 'transactions') {
       setTransactionsTimeFrame(value);
       fetchTransactionsData(value);
-    } 
+    }
     // else if (widget === 'registrations') { // *** Removed ***
     //   setRegistrationsTimeFrame(value);
     //   fetchRegistrationsData(value);
@@ -304,8 +296,6 @@ export default function ReportsDashboard() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold">Reports Dashboard</h1>
-
       {/* Row 1: Total Sales and Total Revenue */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Total Sales Widget */}
@@ -474,7 +464,7 @@ export default function ReportsDashboard() {
         </Card>
       </div>
 
-      {/* Row 3: Revenue Chart =>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> please don't delete this section it is the Revenue  section */}
+      {/* Row 3: Revenue */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Revenue Chart</CardTitle>
