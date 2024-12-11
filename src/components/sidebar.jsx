@@ -21,6 +21,7 @@ import {
   ShoppingCart,
   Star,
   PieChart,
+  Bell,
 } from "lucide-react";
 
 // Updated navItems with roles and permissions
