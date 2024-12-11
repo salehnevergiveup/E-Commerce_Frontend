@@ -94,25 +94,42 @@ function ProfilePage() {
     }
   };
 
-  const markAllAsRead = async () => {
+  const loadReviews = async () => {
     try {
-      // Placeholder for marking all notifications as read
-      await fetch("/api/notifications/mark-all-read", { method: "POST" });
-      setNotifications((prevNotifications) =>
-        prevNotifications.map((notification) => ({
-          ...notification,
-          isRead: true,
-        }))
+      const response = await sendRequest(
+        RequestMethods.GET,
+        `/review/${user.id}?type=saler`, // Adjust the endpoint as per your backend API
+        // Adjust the endpoint as per your backend API
+        null,
+        true
       );
+      if (response.success) {
+        setReviews(response.data); // Assuming response.data is an array of ReviewDTO
+      } else {
+        console.error("Failed to fetch reviews:", response.message);
+      }
     } catch (error) {
-      console.error("Error marking notifications as read:", error);
+      console.error("Error fetching reviews:", error);
     }
   };
 
-  useEffect(() => {
-    console.log("Query parameters:", router.query);
-    //console.log("Active tab:", activeTab);
-  }, [router.query]);
+  const markAllAsRead = async () => {
+    try {
+      const response = await sendRequest(
+        RequestMethods.POST,
+        `/notifications/users/update_notifications`,
+        null,
+        true
+      );
+      if (response.success) {
+        console.log("marked as read successfully");
+      } else {
+        console.error("Failed to mark as read:", response.message);
+      }
+    } catch (error) {
+      console.error("Error, Failed to mark as read:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -196,6 +213,34 @@ function ProfilePage() {
     return <div className="container mx-auto px-4">Loading...</div>;
   }
 
+  if (!userDetails) {
+    return (
+      <div className="container mx-auto px-4">
+        <p>User details not found.</p>
+      </div>
+    );
+  }
+
+  // Extract avatar and cover media from userDetails.medias
+  const avatarMedia = userDetails.medias
+    ? userDetails.medias.find((media) => media.type === "User_Profile")
+    : null;
+  const coverMedia = userDetails.medias
+    ? userDetails.medias.find((media) => media.type === "User_Cover")
+    : null;
+
+  // Determine the cover image source
+  const coverSrc =
+    coverMedia && coverMedia.mediaUrl
+      ? coverMedia.mediaUrl
+      : "/placeholder.svg";
+
+  // Determine the avatar image source
+  const avatarSrc =
+    avatarMedia && avatarMedia.mediaUrl
+      ? avatarMedia.mediaUrl
+      : "/placeholder.svg";
+
   return (
     <div className="container mx-auto px-4 py-3">
       <div className="relative h-48 bg-orange-600 rounded-t-lg mb-16">
@@ -211,15 +256,21 @@ function ProfilePage() {
           <div className="flex items-start gap-6">
             <Avatar className="h-24 w-24 border-4 border-white">
               <AvatarImage
-                src={userDetails.avatar || "/placeholder.svg"}
-                alt={userDetails.name}
+                src={avatarSrc}
+                alt={userDetails.name || "User Avatar"}
               />
-              <AvatarFallback>{userDetails.name[0]}</AvatarFallback>
+              <AvatarFallback>
+                {userDetails.name
+                  ? userDetails.name.charAt(0).toUpperCase()
+                  : "U"}
+              </AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">{userDetails.name}</h2>
+                  <h2 className="text-2xl font-bold">
+                    {userDetails.name || "No Name"}
+                  </h2>
                   <p className="text-muted-foreground">
                     @{userDetails.userName}
                   </p>
@@ -263,198 +314,133 @@ function ProfilePage() {
           }}
         >
           <TabsList>
-            <TabsTrigger value="listings">Listings</TabsTrigger>
-            {userDetails.roleType.toLowerCase() === "user" && (
-              <TabsTrigger value="balance">Balance</TabsTrigger>
-            )}
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>{" "}
-            {/* Add Notifications Tab */}
+            {/* Removed Listings Tab */}
+            {userDetails.roleType &&
+              userDetails.roleType.toLowerCase() === "user" && (
+                <TabsTrigger value="balance">Balance</TabsTrigger>
+              )}
+            <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            <TabsTrigger value="reviews">Reviews</TabsTrigger>{" "}
+            {/* Added Reviews Tab */}
           </TabsList>
 
-          <TabsContent value="listings" className="mt-4">
-            {/* Search Input */}
-            <div className="flex items-center mb-4">
-              <div className="relative w-72">
-                <MagnifyingGlassIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search listings..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {userDetails.productList && userDetails.productList.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {userDetails.productList
-                  .filter((product) =>
-                    product.title
-                      .toLowerCase()
-                      .includes(searchQuery.toLowerCase())
-                  )
-                  .map((product) => (
-                    <Link
-                      href={`/user/products/view/${product.id}`}
-                      key={product.id}
-                    >
-                      <Card key={product.id}>
-                        <CardContent className="p-4">
-                          <Image
-                            src={product.image || "/placeholder.svg"}
-                            alt={product.title}
-                            width={300}
-                            height={200}
-                            className="w-full h-48 object-cover mb-4 rounded"
-                          />
-                          <h3 className="font-semibold mb-2">
-                            {product.title}
-                          </h3>
-                          <p className="text-lg font-bold mb-2">
-                            RM{product.price.toFixed(2)}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Listed on{" "}
-                            {new Date(product.createdAt).toLocaleDateString()}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {product.refundGuaranteedDuration} days refund
-                            guarantee
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
-              </div>
-            ) : (
-              <Card className="border-dashed">
-                <CardContent className="p-12 text-center">
-                  <div className="flex justify-center mb-4">
-                    <Telescope className="h-12 w-12 text-orange-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    @{userDetails.userName} has no Product yet.
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Each of the Platform's users can sell and buy products. Chat
-                    with @{userDetails.userName} to find out more!
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {userDetails.roleType.toLowerCase() === "user" && (
-            <TabsContent value="balance" className="mt-4">
-              {/* Balance content remains unchanged */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Wallet className="mr-2 h-5 w-5 text-orange-600" />
-                      My Balance
-                    </div>
-                    <Button
-                      onClick={handleNavigateToTopUp} //call the backend session here
-                      className="bg-orange-600 hover:bg-orange-700 flex items-center"
-                    >
-                      <DollarSign className="mr-2 h-4 w-4" />
-                      Top Up Wallet
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <Card className="bg-gray-50">
-                    <CardContent className="p-4">
-                      <div className="flex items-start space-x-4">
-                        <ExclamationTriangleIcon className="h-5 w-5 text-orange-600 mt-1" />
-                        <div>
-                          <h4 className="font-semibold">
-                            Verify your identity to cash out
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            To transfer money into your bank account, you'll
-                            need to verify your identity as required by
-                            Malaysian government regulations
-                          </p>
-                          <Button
-                            variant="link"
-                            className="text-orange-600 px-0 mt-2"
-                          >
-                            Verify now
-                            <ArrowRightIcon className="ml-2 h-4 w-4" />
-                          </Button>
-                        </div>
+          {/* Balance Tab Content */}
+          {userDetails.roleType &&
+            userDetails.roleType.toLowerCase() === "user" && (
+              <TabsContent value="balance" className="mt-4">
+                {/* Balance content remains unchanged */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Wallet className="mr-2 h-5 w-5 text-orange-600" />
+                        My Balance
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  {balance ? (
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {/* Available Balance Card */}
-                      <Card
-                        className={`${
-                          balance.availableBalance > 0
-                            ? "bg-green-50 border-green-500"
-                            : "bg-red-50 border-red-500"
-                        } border`}
+                      <Button
+                        onClick={handleNavigateToTopUp}
+                        className="bg-orange-600 hover:bg-orange-700 flex items-center"
                       >
-                        <CardHeader>
-                          <CardTitle className="flex items-center justify-between">
-                            <span>Available Balance</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-2xl font-bold text-black">
-                            RM{balance.availableBalance.toFixed(2)}
-                          </p>
-                          {balance.availableBalance <= 0 && (
-                            <p className="text-sm text-red-600 mt-2">
-                              Please remember top up your wallet before
-                              purchasing items
+                        <DollarSign className="mr-2 h-4 w-4" />
+                        Top Up Wallet
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <Card className="bg-gray-50">
+                      <CardContent className="p-4">
+                        <div className="flex items-start space-x-4">
+                          <ExclamationTriangleIcon className="h-5 w-5 text-orange-600 mt-1" />
+                          <div>
+                            <h4 className="font-semibold">
+                              Verify your identity to cash out
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                              To transfer money into your bank account, you'll
+                              need to verify your identity as required by
+                              Malaysian government regulations
                             </p>
-                          )}
-                        </CardContent>
-                      </Card>
+                            <Button
+                              variant="link"
+                              className="text-orange-600 px-0 mt-2"
+                            >
+                              Verify now
+                              <ArrowRightIcon className="ml-2 h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                      {/* On Hold Balance Card */}
-                      <Card className="bg-yellow-50 border-yellow-500 border">
-                        <CardHeader>
-                          <CardTitle className="flex items-center justify-between">
-                            <span>On Hold Balance</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-2xl font-bold text-black">
-                            RM{balance.onHoldBalance.toFixed(2)}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  ) : (
-                    <p>Loading balance information...</p>
-                  )}
+                    {balance ? (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {/* Available Balance Card */}
+                        <Card
+                          className={`${
+                            balance.availableBalance > 0
+                              ? "bg-green-50 border-green-500"
+                              : "bg-red-50 border-red-500"
+                          } border`}
+                        >
+                          <CardHeader>
+                            <CardTitle className="flex items-center justify-between">
+                              <span>Available Balance</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-2xl font-bold text-black">
+                              RM{balance.availableBalance.toFixed(2)}
+                            </p>
+                            {balance.availableBalance <= 0 && (
+                              <p className="text-sm text-red-600 mt-2">
+                                Please remember to top up your wallet before
+                                purchasing items
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
 
-                  <div>
-                    <h4 className="font-semibold mb-4">Transaction history</h4>
-                    <div className="text-center py-8">
-                      <Image
-                        src="/placeholder.svg"
-                        alt="Empty transactions"
-                        width={120}
-                        height={120}
-                        className="mx-auto mb-4"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Start selling with Carousell Protection and get money in
-                        your Balance!
-                      </p>
+                        {/* On Hold Balance Card */}
+                        <Card className="bg-yellow-50 border-yellow-500 border">
+                          <CardHeader>
+                            <CardTitle className="flex items-center justify-between">
+                              <span>On Hold Balance</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-2xl font-bold text-black">
+                              RM{balance.onHoldBalance.toFixed(2)}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    ) : (
+                      <p>Loading balance information...</p>
+                    )}
+
+                    <div>
+                      <h4 className="font-semibold mb-4">
+                        Transaction History
+                      </h4>
+                      <div className="text-center py-8">
+                        <Image
+                          src="/placeholder.svg"
+                          alt="Empty transactions"
+                          width={120}
+                          height={120}
+                          className="mx-auto mb-4"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Start selling with Carousell Protection and get money
+                          in your Balance!
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+          {/* Notifications Tab Content */}
           <TabsContent value="notifications" className="mt-4">
             <Card className="shadow-md">
               <CardHeader>
@@ -527,6 +513,39 @@ function ProfilePage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Reviews Tab Content */}
+          <TabsContent value="reviews" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Your Reviews</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {reviews.length > 0 ? (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <ReviewCard key={review.id} review={review} />
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="border-dashed">
+                    <CardContent className="p-12 text-center">
+                      <div className="flex justify-center mb-4">
+                        <Telescope className="h-12 w-12 text-orange-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">
+                        You have not written any reviews yet.
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Once you purchase and use products, you can leave
+                        reviews here.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
       <div className="grid gap-4 md:grid-cols-2 mt-6">
@@ -558,7 +577,11 @@ function ProfilePage() {
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-orange-600" />
               <span>
-                Joined {new Date(userDetails.createdAt).toLocaleDateString()}
+                {userDetails.createdAt
+                  ? `Joined ${new Date(
+                      userDetails.createdAt
+                    ).toLocaleDateString()}`
+                  : "No Join Date"}
               </span>
             </div>
           </CardContent>
