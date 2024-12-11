@@ -14,6 +14,11 @@ import { useAuth } from "@/contexts/auth-context"; // Import useAuth
 import UserLayout from "@/layouts/user-layout";
 import AuthGuard from "@/components/auth-guard";
 import WalletService from "@/services/wallet/wallet-service";
+import {
+  startConnection,
+  subscribeToEvent,
+  stopConnection,
+} from "@/services/websocket/websocket-service";
 
 import {
   Pencil,
@@ -50,8 +55,6 @@ function ProfilePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [reviews, setReviews] = useState([]);
   const notificationsPerPage = 10;
-
-  //const [notifications, setNotifications] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(""); // Added state for search query
@@ -93,6 +96,39 @@ function ProfilePage() {
       console.error("Error loading notifications:", error);
     }
   };
+
+  // // Establish the SignalR connection
+  // useEffect(() => {
+  //   // Start connection to the notification hub
+  //   const connection = startConnection("notificationHub");
+
+  //   if (connection) {
+  //     // Subscribe to the "ReceiveNotification" event for individual notifications
+  //     subscribeToEvent(
+  //       "notificationHub",
+  //       "ReceiveNotification",
+  //       (notification) => {
+  //         const newNotification = {
+  //           id: notification.notificationId || 0,
+  //           title: notification.title || "No title",
+  //           messageText: notification.messageText || "No message",
+  //           createdAt: notification.createdAt || new Date(),
+  //         };
+
+  //         // Add the new notification to the list
+  //         setNotifications((prevNotifications) => [
+  //           newNotification,
+  //           ...prevNotifications, // Append the previous notifications
+  //         ]);
+  //       }
+  //     );
+  //   }
+
+  //   // Cleanup function to stop the connection when the component is unmounted or user logs out
+  //   return () => {
+  //     stopConnection("notificationHub");
+  //   };
+  // }, []);
 
   const loadReviews = async () => {
     try {

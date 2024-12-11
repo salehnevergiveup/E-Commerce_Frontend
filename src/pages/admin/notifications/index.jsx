@@ -34,7 +34,7 @@ const NotificationsDashboard = () => {
   const [isLoading, setIsLoading] = useState(true); // Loading state
   const [error, setError] = useState(null); // Error state
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedRole, setSelectedRole] = useState(null);
+  const [selectedUsername, setselectedUsername] = useState(null);
   const [dateRange, setDateRange] = useState({ from: "", to: "" }); // Date range filter
 
   // Fetch notifications from backend
@@ -72,18 +72,18 @@ const NotificationsDashboard = () => {
   const filteredNotifications = notifications.filter((notification) => {
     const matchesSearch =
       notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      notification.message.toLowerCase().includes(searchTerm.toLowerCase());
+      notification.messageText.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesRole =
-      selectedRole === null || notification.role === selectedRole;
+    const matchesUsername =
+      selectedUsername === null || notification.senderUsername === selectedRole;
 
     const matchesDate =
       (!dateRange.from ||
-        new Date(notification.timeSent) >= new Date(dateRange.from)) &&
+        new Date(notification.createdAt) >= new Date(dateRange.from)) &&
       (!dateRange.to ||
-        new Date(notification.timeSent) <= new Date(dateRange.to));
+        new Date(notification.createdAt) <= new Date(dateRange.to));
 
-    return matchesSearch && matchesRole && matchesDate;
+    return matchesSearch && matchesUsername && matchesDate;
   });
 
   /**
@@ -134,7 +134,10 @@ const NotificationsDashboard = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
 
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <Select
+                value={selectedUsername}
+                onValueChange={setselectedUsername}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select Role" />
                 </SelectTrigger>

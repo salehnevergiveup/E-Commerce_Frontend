@@ -63,20 +63,9 @@ export default function Header() {
               })
             );
 
-            // Set new notifications, ensuring no duplicates
-            setNotifications((prevNotifications) => {
-              const uniqueNotifications = [
-                ...prevNotifications.reverse(),
-                ...processedNotifications.filter(
-                  (newNotification) =>
-                    !prevNotifications.some(
-                      (existingNotification) =>
-                        existingNotification.id === newNotification.id
-                    )
-                ),
-              ];
-              return uniqueNotifications;
-            });
+            setNotifications(
+              () => processedNotifications.slice(0, 5) // Ensure only 5 latest notifications
+            );
           }
         );
 
@@ -85,10 +74,21 @@ export default function Header() {
           "notificationHub",
           "ReceiveNotification",
           (notification) => {
-            setNotifications((prevNotifications) => [
-              notification,
-              ...prevNotifications,
-            ]);
+            const newNotification = {
+              id: notification.notificationId || 0,
+              title: notification.title || "No title",
+              messageText: notification.messageText || "No message",
+              createdAt: notification.createdAt || new Date(),
+            };
+
+            // Add the new notification and trim the list to 5
+            setNotifications((prevNotifications) => {
+              const updatedNotifications = [
+                newNotification,
+                ...prevNotifications,
+              ];
+              return updatedNotifications.slice(0, 5); // Ensure only 5 latest notifications
+            });
           }
         );
       }
