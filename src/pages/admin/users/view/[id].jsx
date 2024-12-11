@@ -96,9 +96,6 @@ export default function ViewUser() {
         );
         if (response.success) {
           setReviews(response.data); // Assuming response.data is an array of ReviewDTO
-        } else {
-          toast.error(response.message || "Failed to fetch reviews.");
-          setReviewsError(response.message || "Failed to fetch reviews.");
         }
       } catch (err) {
         toast.error(err.message || "Error fetching reviews.");
@@ -348,56 +345,57 @@ export default function ViewUser() {
       )}
 
       {/* Tabs Section - Removed Listings Tab and Added Reviews Tab */}
-      <Tabs
-        defaultValue="reviews"
-        className="mt-6"
-        onValueChange={(value) => {
-          if (value === "reviews") loadReviews();
-          // Handle other tabs if necessary
-        }}
-      >
-        <TabsList>
-          <TabsTrigger value="reviews">Reviews</TabsTrigger> {/* Added Reviews Tab */}
-          {/* Removed Listings Tab */}
-        </TabsList>
+      {(user.roleType.toLowerCase() === "user") && (
+        <Tabs
+          defaultValue="reviews"
+          className="mt-6"
+          onValueChange={(value) => {
+            if (value === "reviews") loadReviews();
+            // Handle other tabs if necessary
+          }}
+        >
+          <TabsList>
+            <TabsTrigger value="reviews">Reviews</TabsTrigger> {/* Added Reviews Tab */}
+            {/* Removed Listings Tab */}
+          </TabsList>
 
-        <TabsContent value="reviews" className="mt-4">
-          {/* Reviews Tab Content */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">User Reviews</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {reviewsLoading ? (
-                <p>Loading reviews...</p>
-              ) : reviewsError ? (
-                <p className="text-red-500">Error: {reviewsError}</p>
-              ) : reviews.length > 0 ? (
-                <div className="space-y-4">
-                  {reviews.map((review) => (
-                    <ReviewCard key={review.id} review={review} />
-                  ))}
-                </div>
-              ) : (
-                <Card className="border-dashed">
-                  <CardContent className="p-12 text-center">
-                    <div className="flex justify-center mb-4">
-                      <Telescope className="h-12 w-12 text-orange-600" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">
-                      No Reviews Found
-                    </h3>
-                    <p className="text-muted-foreground">
-                      This user has not received any reviews yet.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
+          <TabsContent value="reviews" className="mt-4">
+            {/* Reviews Tab Content */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">User Reviews</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {reviewsLoading ? (
+                  <p>Loading reviews...</p>
+                ) : reviewsError ? (
+                  <p className="text-red-500">Error: {reviewsError}</p>
+                ) : reviews.length > 0 ? (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <ReviewCard key={review.id} review={review} />
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="border-dashed">
+                    <CardContent className="p-12 text-center">
+                      <div className="flex justify-center mb-4">
+                        <Telescope className="h-12 w-12 text-orange-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">
+                        No Reviews Found
+                      </h3>
+                      <p className="text-muted-foreground">
+                        This user has not received any reviews yet.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
       {/* User Details Cards */}
 
       <div className="grid gap-4 md:grid-cols-2 mt-6">
