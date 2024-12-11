@@ -27,7 +27,6 @@ export default function ProfilePage() {
   const [userDetails, setUserDetails] = useState(null);
   const [loading, setLoading] = useState(true);
 
-
   useEffect(() => {
     const fetchUser = async () => {
       setLoading(true);
@@ -36,7 +35,7 @@ export default function ProfilePage() {
           RequestMethods.GET,
           `users/${user.id}`,
           null,
-          true 
+          true
         );
 
         if (response.success) {
@@ -88,12 +87,25 @@ export default function ProfilePage() {
     );
   }
 
+  // Extract avatar and cover media from userDetails.medias
+  const avatarMedia = userDetails.medias
+    ? userDetails.medias.find((media) => media.type === "User_Profile")
+    : null;
+  const coverMedia = userDetails.medias
+    ? userDetails.medias.find((media) => media.type === "User_Cover")
+    : null;
+
+  // Determine the cover image source
+  const coverSrc = coverMedia && coverMedia.mediaUrl ? coverMedia.mediaUrl : "/placeholder.svg";
+
+  // Determine the avatar image source
+  const avatarSrc = avatarMedia && avatarMedia.mediaUrl ? avatarMedia.mediaUrl : "/placeholder.svg";
+
   return (
     <div className="container mx-auto px-4">
-      
       <div className="relative h-48 bg-orange-600 rounded-t-lg mb-16">
         <Image
-          src={userDetails.userCover ?? "/placeholder.svg"}
+          src={coverSrc}
           alt="Cover"
           layout="fill"
           className="object-cover rounded-t-lg"
@@ -103,19 +115,16 @@ export default function ProfilePage() {
         <CardContent className="p-6">
           <div className="flex items-start gap-6">
             <Avatar className="h-24 w-24 border-4 border-white">
-              <AvatarImage
-                src={userDetails.avatar || "/placeholder.svg"}
-                alt={userDetails.name}
-              />
-              <AvatarFallback>{userDetails.name[0]}</AvatarFallback>
+              <AvatarImage src={avatarSrc} alt={userDetails.name || "User Avatar"} />
+              <AvatarFallback>
+                {userDetails.name ? userDetails.name.charAt(0).toUpperCase() : "U"}
+              </AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">{userDetails.name}</h2>
-                  <p className="text-muted-foreground">
-                    @{userDetails.userName}
-                  </p>
+                  <h2 className="text-2xl font-bold">{userDetails.name || "No Name"}</h2>
+                  <p className="text-muted-foreground">@{userDetails.userName}</p>
                 </div>
                 <Button
                   onClick={handleEdit}
@@ -126,11 +135,7 @@ export default function ProfilePage() {
                 </Button>
               </div>
               <div className="flex items-center gap-2">
-                <Badge
-                  className={`${getStatusColor(
-                    userDetails.status
-                  )} text-white`}
-                >
+                <Badge className={`${getStatusColor(userDetails.status)} text-white`}>
                   {userDetails.status}
                 </Badge>
                 <Badge variant="outline">{userDetails.roleType}</Badge>
@@ -161,7 +166,6 @@ export default function ProfilePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* Add permissions management UI here */}
                   <p>Manage user permissions</p>
                 </CardContent>
               </Card>
@@ -173,7 +177,6 @@ export default function ProfilePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* Add account settings management UI here */}
                   <p>Manage account settings</p>
                 </CardContent>
               </Card>
@@ -185,7 +188,6 @@ export default function ProfilePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* Add activity log UI here */}
                   <p>View user activity log</p>
                 </CardContent>
               </Card>
@@ -203,11 +205,11 @@ export default function ProfilePage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
               <EnvelopeClosedIcon className="h-4 w-4 text-orange-600" />
-              <span>{userDetails.email}</span>
+              <span>{userDetails.email || "No Email"}</span>
             </div>
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-orange-600" />
-              <span>{userDetails.phoneNumber}</span>
+              <span>{userDetails.phoneNumber || "No Phone Number"}</span>
             </div>
           </CardContent>
         </Card>
@@ -219,12 +221,14 @@ export default function ProfilePage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-orange-600" />
-              <span>{userDetails.billingAddress}</span>
+              <span>{userDetails.billingAddress || "No Billing Address"}</span>
             </div>
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-orange-600" />
               <span>
-                Joined {new Date(userDetails.createdAt).toLocaleDateString()}
+                {userDetails.createdAt
+                  ? `Joined ${new Date(userDetails.createdAt).toLocaleDateString()}`
+                  : "No Join Date"}
               </span>
             </div>
           </CardContent>

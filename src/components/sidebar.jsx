@@ -21,6 +21,7 @@ import {
   ShoppingCart,
   Star,
   PieChart,
+  Tag,
   Bell,
 } from "lucide-react";
 
@@ -53,6 +54,13 @@ const navItems = [
     ],
   },
   {
+    title: "Categories",
+    href: "/admin/categories",
+    icon: <Tag className="h-5 w-5" />,
+    roles: [Roles.SUPER_ADMIN, Roles.ADMIN],
+    permissions: [Permissions.CAN_VIEW],
+  },
+  {
     title: "Products",
     href: "/admin/products",
     icon: <Package className="h-5 w-5" />,
@@ -60,16 +68,16 @@ const navItems = [
     permissions: [Permissions.CAN_VIEW],
   },
   {
-    title: "Sales",
-    href: "/admin/sales",
-    icon: <DollarSign className="h-5 w-5" />,
+    title: "Shopping Cart",
+    href: "/admin/carts",
+    icon: <ShoppingCart className="h-5 w-5" />,
     roles: [Roles.SUPER_ADMIN, Roles.ADMIN, Roles.USER],
     permissions: [Permissions.CAN_VIEW],
   },
   {
-    title: "Shopping Cart",
-    href: "/admin/carts",
-    icon: <ShoppingCart className="h-5 w-5" />,
+    title: "Reviews",
+    href: "/admin/reviews",
+    icon: <Star className="h-5 w-5" />,
     roles: [Roles.SUPER_ADMIN, Roles.ADMIN, Roles.USER],
     permissions: [Permissions.CAN_VIEW],
   },

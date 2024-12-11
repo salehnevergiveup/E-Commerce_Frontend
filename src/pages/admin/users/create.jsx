@@ -10,8 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import PermissionsDisplay from "@/components/permissions-display"
-
+import PermissionsDisplay from "@/components/permissions-display";
 import {
   Select,
   SelectContent,
@@ -31,8 +30,11 @@ import { Pencil, ArrowLeft, Upload } from "lucide-react";
 
 import AdminLayout from "@/layouts/admin-layout";
 
-import { sendRequest, testRequest } from "@/services/requests/request-service"; // Ensure correct path
-import RequestMethods from "@/enums/request-methods"; // Ensure correct path
+import { sendRequest } from "@/services/requests/request-service"; 
+import RequestMethods from "@/enums/request-methods"; 
+
+// Import S3MediaFacade
+import S3MediaFacade from '@/services/mediaService/handle-media'; 
 
 export default function CreateUser() {
   const router = useRouter();
@@ -48,9 +50,9 @@ export default function CreateUser() {
     roleId: "",
     phoneNumber: "",
     billingAddress: "",
-    avatar: "",
-    userCover: "",
+    medias: [], // Array to hold media objects with {type, file}
   });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -68,7 +70,7 @@ export default function CreateUser() {
           RequestMethods.GET,
           `roles?includeUsers=false`,
           null,
-          true 
+          true
         );
         if (response.success) {
           // Filter roles to include only "Admin" and "User"
@@ -76,7 +78,6 @@ export default function CreateUser() {
             (item) =>
               item.roleType.toLowerCase() === "admin" || item.roleType.toLowerCase() === "user"
           );
-          console.log("filteredRoles this is:", filteredRoles);
           setRoles(filteredRoles);
         } else {
           setError(response.message || "Failed to fetch roles.");
@@ -89,6 +90,15 @@ export default function CreateUser() {
 
     fetchRoles();
   }, []);
+
+  /**
+   * Retrieves a media object from the medias array by type.
+   * @param {string} type - The type of media to retrieve.
+   * @returns {Object|null} - The media object or null if not found.
+   */
+  const getMediaByType = (type) => {
+    return user.medias.find((media) => media.type === type) || null;
+  };
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -113,21 +123,49 @@ export default function CreateUser() {
     }
   };
 
-  // Handle image uploads
+  /**
+   * Handles image uploads by adding or updating media in the medias array.
+   * @param {string} type - The type of media (e.g., "User_Profile", "User_Cover").
+   * @param {File} file - The selected file object.
+   */
   const handleImageUpload = (type, file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        setUser({ ...user, [type]: e.target.result });
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Only JPEG, PNG, and GIF files are allowed.");
+      return;
+    }
+
+    if (file.size > maxSize) {
+      toast.error("File size must be less than 5MB.");
+      return;
+    }
+
+    setUser((prevUser) => {
+      // Check if the media of this type already exists
+      const existingMediaIndex = prevUser.medias.findIndex(
+        (media) => media.type === type
+      );
+
+      if (existingMediaIndex !== -1) {
+        // Update the existing media object
+        const updatedMedias = [...prevUser.medias];
+        updatedMedias[existingMediaIndex] = { type, file };
+        return { ...prevUser, medias: updatedMedias };
+      } else {
+        // Add a new media object
+        return {
+          ...prevUser,
+          medias: [...prevUser.medias, { type, file }],
+        };
       }
-    };
-    reader.readAsDataURL(file);
+    });
   };
 
   // Handle form submission
   const handleCreate = async () => {
     // Validate required fields
-
     if (
       !user.userName ||
       !user.name ||
@@ -145,7 +183,19 @@ export default function CreateUser() {
     setError(null);
 
     try {
-      // Prepare the payload
+      // Step 1: Upload the medias to S3 if any
+      // user.medias is of form [{ type: 'User_Profile', file: File }, { type: 'User_Cover', file: File }]
+      // We'll upload them and get back something like:
+      // [{ id: null, type: 'User_Profile', mediaUrl: '...', createdAt: null, updatedAt: null }, ...]
+      
+
+
+      const uploadedMedias = await S3MediaFacade.uploadMedias(user.medias);
+
+      // Step 2: Prepare the final payload with the uploadedMedias array
+      // The backend expects type: 'User_Profile' or 'User_Cover' already set.
+      // If you used different keys before, ensure that handleImageUpload is using 'User_Profile' and 'User_Cover'
+      // If not, we can map them here. But we already used correct type keys above.
       const payload = {
         userName: user.userName,
         name: user.name,
@@ -156,20 +206,21 @@ export default function CreateUser() {
         roleId: parseInt(user.roleId),
         phoneNumber: user.phoneNumber,
         billingAddress: user.billingAddress,
-        avatar: user.avatar, // URL or Base64 string
-        userCover: user.userCover, // URL or Base64 string
+        medias: uploadedMedias,
+        updateMedia: true, 
       };
 
-      // Make the POST request to create the user
+      console.log("Final payload to send:", payload);
+
+      // Step 3: Send request to backend
       const createResponse = await sendRequest(
         RequestMethods.POST,
-        `/users`, // Ensure this matches your backend route
+        `/users`,
         payload,
         true // requireAuth
       );
 
       if (createResponse.success) {
-        // Optionally, you can redirect to the newly created user's detail page
         toast.success("User created successfully.");
         router.back();
       } else {
@@ -201,7 +252,6 @@ export default function CreateUser() {
     }
   };
 
-
   return (
     <div className="container mx-auto px-4">
       {/* Back Button */}
@@ -217,9 +267,10 @@ export default function CreateUser() {
       {/* Banner */}
       <div className="relative h-48 bg-orange-600 rounded-t-lg mb-16">
         <div className="absolute inset-0">
-          {user.userCover ? (
+          {/* Cover Image Display */}
+          {getMediaByType('User_Cover') ? (
             <Image
-              src={user.userCover}
+              src={URL.createObjectURL(getMediaByType('User_Cover').file)}
               alt="Cover"
               layout="fill"
               className="w-full h-full object-cover rounded-t-lg"
@@ -245,6 +296,7 @@ export default function CreateUser() {
                   <Upload className="h-12 w-12 text-orange-400" />
                   <span className="mt-2 text-sm text-gray-500">Choose a cover image to upload</span>
                 </div>
+                {/* Cover Image Upload */}
                 <input
                   id="cover-upload"
                   type="file"
@@ -252,8 +304,8 @@ export default function CreateUser() {
                   accept="image/*"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleImageUpload('userCover', file);
-                    setCoverDialogOpen(false);
+                    if (file) handleImageUpload('User_Cover', file);
+                    setCoverDialogOpen(false); // Close the dialog
                   }}
                 />
               </label>
@@ -268,10 +320,16 @@ export default function CreateUser() {
           <div className="flex items-start gap-6">
             <div className="relative">
               <Avatar className="h-24 w-24 border-4 border-white">
-                {user.avatar ? (
-                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                {/* Avatar Image Display */}
+                {getMediaByType('User_Profile') ? (
+                  <AvatarImage
+                    src={URL.createObjectURL(getMediaByType('User_Profile').file)}
+                    alt={user.name}
+                  />
                 ) : (
-                  <AvatarFallback>{user.userName ? user.userName.charAt(0).toUpperCase() : "U"}</AvatarFallback>
+                  <AvatarFallback>
+                    {user.userName ? user.userName.charAt(0).toUpperCase() : "U"}
+                  </AvatarFallback>
                 )}
               </Avatar>
               <Dialog open={avatarDialogOpen} onOpenChange={setAvatarDialogOpen}>
@@ -291,6 +349,7 @@ export default function CreateUser() {
                         <Upload className="h-12 w-12 text-orange-400" />
                         <span className="mt-2 text-sm text-gray-500">Upload avatar</span>
                       </div>
+                      {/* Avatar Image Upload */}
                       <input
                         id="avatar-upload"
                         type="file"
@@ -298,8 +357,8 @@ export default function CreateUser() {
                         accept="image/*"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) handleImageUpload('avatar', file);
-                          setAvatarDialogOpen(false);
+                          if (file) handleImageUpload('User_Profile', file);
+                          setAvatarDialogOpen(false); // Close the dialog
                         }}
                       />
                     </label>
@@ -327,6 +386,7 @@ export default function CreateUser() {
                 )}
               </div>
               {/* Display Permissions */}
+              {permissions && <PermissionsDisplay permissions={permissions} />}
             </div>
           </div>
         </CardContent>

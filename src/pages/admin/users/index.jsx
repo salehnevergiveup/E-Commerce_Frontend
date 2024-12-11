@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import AdminLayout from "@/layouts/admin-layout";
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'react-toastify';
-import sendRequest from '@/services/requests/request-service';
+import { sendRequest, sendRequestTest } from '@/services/requests/request-service';
 import Roles from "@/enums/users";
 import RequestMethods from "@/enums/request-methods";
+import S3MediaFacade from '@/services/mediaService/handle-media';
 
 import {
   Select,
@@ -44,6 +45,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Trash2, Eye, Edit, Search, Download, UserPlus, Users, AlertTriangle
 } from "lucide-react";
+import Image from "next/image"; // Import Image if you decide to use cover images
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -66,6 +68,7 @@ export default function UsersDashboard() {
   const [isLoading, setIsLoading] = useState(true); // Loading state
   const [error, setError] = useState(null); // Error state
   const [deleteUserId, setDeleteUserId] = useState(null);
+  const [deleteUserMedias, setDeleteUserMedias] = useState([]); // To store medias of the user to be deleted
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -82,17 +85,25 @@ export default function UsersDashboard() {
       try {
         const response = await sendRequest(RequestMethods.GET, "users", null, true);
         if (response.success) {
-          const mappedUsers = response.data.map((userObj) => ({
-            id: userObj.id,
-            name: userObj.name,
-            username: userObj.username,
-            email: userObj.email,
-            roleName: userObj.roleName,
-            roleType: userObj.roleType,
-            status: userObj.status,
-            createdAt: userObj.createdAt,
-            avatar: userObj.avatar || "/placeholder.svg", // Fallback to placeholder if avatar is empty
-          }));
+          const mappedUsers = response.data.map((userObj) => {
+            // Extract avatar (User_Profile) and cover (User_Cover) from medias
+            const avatarMedia = userObj.medias.find(media => media.type === 'User_Profile');
+            const coverMedia = userObj.medias.find(media => media.type === 'User_Cover');
+
+            return {
+              id: userObj.id,
+              name: userObj.name,
+              username: userObj.username,
+              email: userObj.email,
+              roleName: userObj.roleName,
+              roleType: userObj.roleType,
+              status: userObj.status,
+              createdAt: userObj.createdAt,
+              avatar: avatarMedia ? avatarMedia.mediaUrl : "/placeholder.svg", // Correct property access
+              cover: coverMedia ? coverMedia.mediaUrl : "/cover-placeholder.svg", // Handle cover image
+              medias: userObj.medias || [], // Ensure medias array is present
+            };
+          });
           setUsers(mappedUsers);
         } else {
           setError(response.message || "Failed to fetch users.");
@@ -110,27 +121,69 @@ export default function UsersDashboard() {
     }
   }, [isAuthenticated]);
 
-  const handleDelete = (userId) => {
+  /**
+   * Handles the delete button click by setting the user ID and their medias.
+   * @param {number} userId - The ID of the user to delete.
+   * @param {Array<Object>} medias - The medias associated with the user.
+   */
+  const handleDelete = (userId, medias) => {
     setDeleteUserId(userId);
+    setDeleteUserMedias(medias);
   };
 
+  /**
+   * Confirms the deletion by sending the necessary data to the backend.
+   */
   const confirmDelete = async () => {
     if (!deleteUserId) return;
+
     try {
-      const endpoint = `users/${deleteUserId}`; // e.g., '/api/User/1'
-      const response = await sendRequest(RequestMethods.DELETE, endpoint, null, true);
+
+      const userToDelete = users.find(user => user.id === deleteUserId);
+
+      if (!userToDelete) {
+        toast.error("User not found.");
+        setDeleteUserId(null);
+        setDeleteUserMedias([]);
+        return;
+      }
+
+      const mediaUrls = userToDelete.medias.map(media => media.mediaUrl);
+
+      if (mediaUrls.length > 0) {
+        await S3MediaFacade.deleteMedias(mediaUrls);
+      }
+
+      const payload = {
+        id: deleteUserId,
+      };
+
+      const response = await sendRequest(
+        RequestMethods.DELETE,
+        `users/${deleteUserId}`,
+        payload,
+        true
+      );
+
       if (response.success) {
-        setUsers(users.filter((user) => user.id !== deleteUserId));
+
+        setUsers(prevUsers => prevUsers.filter(user => user.id !== deleteUserId));
         toast.success("User deleted successfully.");
+
       } else {
+        // Handle failure response from backend
         toast.error(response.message || "Failed to delete user.");
       }
-      setDeleteUserId(null);
     } catch (err) {
+      // Handle network or unexpected errors
       toast.error(err.message || "Failed to delete user.");
+    } finally {
+      // Reset deletion states
       setDeleteUserId(null);
+      setDeleteUserMedias([]);
     }
   };
+
 
   // Determine the role of the logged-in user
   const currentUserRole = user?.roleType; // Adjusted to match backend field 'roleType'
@@ -189,7 +242,7 @@ export default function UsersDashboard() {
       value: users.filter(user => user.roleType === Roles.ADMIN).length,
       change: "+0%", // Placeholder
       icon: <Users className="h-4 w-4" />,
-      subtitle: "Total Super Admins",
+      subtitle: "Total Admins",
     },
     {
       title: "Users",
@@ -368,6 +421,16 @@ export default function UsersDashboard() {
                                 <div className="text-sm text-muted-foreground">{user.email || "No Email"}</div>
                               </div>
                             </div>
+                            {/* Optional: Display Cover Image */}
+                            {/* <div className="mt-2">
+                              <Image
+                                src={user.cover || "/cover-placeholder.svg"}
+                                alt={`${user.name}'s Cover`}
+                                width={100}
+                                height={50}
+                                className="object-cover rounded"
+                              />
+                            </div> */}
                           </TableCell>
                           <TableCell>{user.username}</TableCell>
                           <TableCell>{user.roleName}</TableCell>
@@ -386,7 +449,7 @@ export default function UsersDashboard() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-8 w-8"
-                                    onClick={() => handleDelete(user.id)}>
+                                    onClick={() => handleDelete(user.id, user.medias)}>
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                   <Link href={`users/edit/${user.id}`}>
@@ -447,7 +510,10 @@ export default function UsersDashboard() {
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteUserId !== null} onOpenChange={() => setDeleteUserId(null)}>
+      <AlertDialog open={deleteUserId !== null} onOpenChange={() => {
+        setDeleteUserId(null);
+        setDeleteUserMedias([]);
+      }}>
         <AlertDialogContent className="bg-white text-center space-y-4">
           <AlertDialogHeader className="flex flex-col items-center gap-2">
             <AlertDialogTitle className="text-center">Delete User</AlertDialogTitle>

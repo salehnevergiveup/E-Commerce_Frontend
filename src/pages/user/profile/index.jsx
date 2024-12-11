@@ -264,10 +264,22 @@ function ProfilePage() {
                   ? userDetails.name.charAt(0).toUpperCase()
                   : "U"}
               </AvatarFallback>
+              <AvatarImage
+                src={avatarSrc}
+                alt={userDetails.name || "User Avatar"}
+              />
+              <AvatarFallback>
+                {userDetails.name
+                  ? userDetails.name.charAt(0).toUpperCase()
+                  : "U"}
+              </AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
                 <div>
+                  <h2 className="text-2xl font-bold">
+                    {userDetails.name || "No Name"}
+                  </h2>
                   <h2 className="text-2xl font-bold">
                     {userDetails.name || "No Name"}
                   </h2>
@@ -546,6 +558,39 @@ function ProfilePage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Reviews Tab Content */}
+          <TabsContent value="reviews" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Your Reviews</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {reviews.length > 0 ? (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <ReviewCard key={review.id} review={review} />
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="border-dashed">
+                    <CardContent className="p-12 text-center">
+                      <div className="flex justify-center mb-4">
+                        <Telescope className="h-12 w-12 text-orange-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">
+                        You have not written any reviews yet.
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Once you purchase and use products, you can leave
+                        reviews here.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
       <div className="grid gap-4 md:grid-cols-2 mt-6">
@@ -577,6 +622,11 @@ function ProfilePage() {
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-orange-600" />
               <span>
+                {userDetails.createdAt
+                  ? `Joined ${new Date(
+                      userDetails.createdAt
+                    ).toLocaleDateString()}`
+                  : "No Join Date"}
                 {userDetails.createdAt
                   ? `Joined ${new Date(
                       userDetails.createdAt
