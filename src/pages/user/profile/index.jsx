@@ -48,7 +48,7 @@ function ProfilePage() {
     onHoldBalance: 0,
   });
   const [currentPage, setCurrentPage] = useState(1);
-
+  const [reviews, setReviews] = useState([]);
   const notificationsPerPage = 10;
 
   //const [notifications, setNotifications] = useState([]);
@@ -157,6 +157,7 @@ function ProfilePage() {
       await fetchUser(); // Fetch user details first
       await loadBalance(); // Then fetch balance if user is defined
       await loadNotifications();
+      await loadReviews();
     };
 
     initialize(); // Call initialize function when component is mounted
@@ -243,27 +244,23 @@ function ProfilePage() {
 
   return (
     <div className="container mx-auto px-4 py-3">
+      {/* Cover Image */}
       <div className="relative h-48 bg-orange-600 rounded-t-lg mb-16">
-        <Image
-          src={userDetails.userCover ?? "/placeholder.svg"}
-          alt="Cover"
-          layout="fill"
-          className="object-cover rounded-t-lg"
-        />
+        <div className="absolute inset-0">
+          <Image
+            src={coverSrc}
+            alt="Cover"
+            layout="fill"
+            className="object-cover rounded-t-lg"
+          />
+        </div>
       </div>
+
+      {/* User Info Card */}
       <Card className="border-0 shadow-lg -mt-16">
         <CardContent className="p-6">
           <div className="flex items-start gap-6">
             <Avatar className="h-24 w-24 border-4 border-white">
-              <AvatarImage
-                src={avatarSrc}
-                alt={userDetails.name || "User Avatar"}
-              />
-              <AvatarFallback>
-                {userDetails.name
-                  ? userDetails.name.charAt(0).toUpperCase()
-                  : "U"}
-              </AvatarFallback>
               <AvatarImage
                 src={avatarSrc}
                 alt={userDetails.name || "User Avatar"}
@@ -280,9 +277,6 @@ function ProfilePage() {
                   <h2 className="text-2xl font-bold">
                     {userDetails.name || "No Name"}
                   </h2>
-                  <h2 className="text-2xl font-bold">
-                    {userDetails.name || "No Name"}
-                  </h2>
                   <p className="text-muted-foreground">
                     @{userDetails.userName}
                   </p>
@@ -292,7 +286,7 @@ function ProfilePage() {
                   className="bg-orange-600 hover:bg-orange-700"
                 >
                   <Pencil className="mr-2 h-4 w-4" />
-                  Edit User
+                  Edit Profile
                 </Button>
               </div>
               <div className="flex items-center gap-2">
@@ -301,8 +295,8 @@ function ProfilePage() {
                 >
                   {userDetails.status}
                 </Badge>
-                <Badge variant="outline">{userDetails.roleType}</Badge>
-                <Badge variant="outline">{userDetails.roleName}</Badge>
+                <Badge variant="outline">{userDetails.roleType || "N/A"}</Badge>
+                <Badge variant="outline">{userDetails.roleName || "N/A"}</Badge>
               </div>
             </div>
           </div>
@@ -323,6 +317,7 @@ function ProfilePage() {
 
             if (value === "balance") loadBalance();
             if (value === "notifications") loadNotifications();
+            if (value === "reviews") loadReviews();
           }}
         >
           <TabsList>
@@ -558,41 +553,9 @@ function ProfilePage() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* Reviews Tab Content */}
-          <TabsContent value="reviews" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Your Reviews</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {reviews.length > 0 ? (
-                  <div className="space-y-4">
-                    {reviews.map((review) => (
-                      <ReviewCard key={review.id} review={review} />
-                    ))}
-                  </div>
-                ) : (
-                  <Card className="border-dashed">
-                    <CardContent className="p-12 text-center">
-                      <div className="flex justify-center mb-4">
-                        <Telescope className="h-12 w-12 text-orange-600" />
-                      </div>
-                      <h3 className="text-lg font-semibold mb-2">
-                        You have not written any reviews yet.
-                      </h3>
-                      <p className="text-muted-foreground">
-                        Once you purchase and use products, you can leave
-                        reviews here.
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
+
       <div className="grid gap-4 md:grid-cols-2 mt-6">
         <Card>
           <CardHeader>
