@@ -112,7 +112,7 @@ export function ReviewCard({ review }) {
           <DialogContent className="max-w-3xl p-0 bg-white">
             <div className="relative w-full h-[80vh]">
               <Image
-                src={review.medias[photoIndex].mediaUrl}
+                src={review.medias[photoIndex]?.mediaUrl}
                 alt={`Review image ${photoIndex + 1}`}
                 fill
                 className="object-contain"

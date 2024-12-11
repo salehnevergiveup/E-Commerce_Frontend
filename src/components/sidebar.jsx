@@ -21,6 +21,7 @@ import {
   ShoppingCart,
   Star,
   PieChart ,
+  Tag
 } from "lucide-react";
 
 
@@ -48,17 +49,17 @@ const navItems = [
     permissions: [Permissions.CAN_VIEW, Permissions.CAN_EDIT, Permissions.CAN_DELETE, Permissions.CAN_CREATE],
   },
   {
-    title: "Products",
-    href: "/admin/products",
-    icon: <Package className="h-5 w-5" />,
+    title: "Categories",
+    href: "/admin/categories",
+    icon: <Tag className="h-5 w-5" />,
     roles: [Roles.SUPER_ADMIN, Roles.ADMIN],
     permissions: [Permissions.CAN_VIEW],
   },
   {
-    title: "Sales",
-    href: "/admin/sales",
-    icon: <DollarSign className="h-5 w-5" />,
-    roles: [Roles.SUPER_ADMIN, Roles.ADMIN, Roles.USER],
+    title: "Products",
+    href: "/admin/products",
+    icon: <Package className="h-5 w-5" />,
+    roles: [Roles.SUPER_ADMIN, Roles.ADMIN],
     permissions: [Permissions.CAN_VIEW],
   },
   {
@@ -119,8 +120,8 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, pathname }) => {
   });
 
   return (
-    <div className={cn("relative hidden h-screen transition-all duration-300 lg:flex", isCollapsed ? "w-16" : "w-64")}>
-      <aside className={cn("fixed hidden h-screen overflow-hidden border-r bg-white dark:bg-gray-900 transition-all duration-300 lg:flex", isCollapsed ? "w-16" : "w-64")}>
+    <div className={cn("relative h-screen transition-all duration-300 lg:flex", isCollapsed ? "w-16" : "w-64")}>
+      <aside className={cn("fixed h-screen overflow-hidden border-r bg-white dark:bg-gray-900 transition-all duration-300 lg:flex", isCollapsed ? "w-16" : "w-64" )}>
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className={cn("flex h-16 items-center border-b px-4", isCollapsed ? "justify-center" : "justify-between")}>

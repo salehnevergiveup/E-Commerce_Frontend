@@ -85,9 +85,9 @@ export default function AdminProducts() {
             try {
                 const response = await sendRequest(
                     RequestMethods.GET,
-                    `/product/view-all-products`,
+                    `/product/public/view-all-products`,
                     null,
-                    true // Assuming authentication is required
+                    false // Assuming authentication is required
                 );
 
                 console.log(response);

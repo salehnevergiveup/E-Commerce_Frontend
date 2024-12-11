@@ -32,7 +32,9 @@ const ProfileMenu = ({ profileLink }) => {
           null,
           true 
         );
-       console.log("data fetched from the profile", response);
+
+        console.log("medias checking");  
+        console.log(response.data)
 
         if (response.success) {
           setUser(response.data); 
@@ -62,9 +64,9 @@ const ProfileMenu = ({ profileLink }) => {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full">
           {/* Display user avatar or initials */}
-          {user && user.avatar ? (
+          {user && user?.medias[0]?.mediaUrl ? (
             <Image 
-            src={user.avatar}
+            src={user?.medias[0]?.mediaUrl}
             alt="User"
             layout="fill"
             objectFit="cover"

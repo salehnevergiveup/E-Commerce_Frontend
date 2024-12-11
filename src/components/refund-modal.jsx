@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { X } from 'lucide-react';
 import {
@@ -26,7 +26,7 @@ export function RefundModal({
   onClose,
   productId
 }) {
-  const {user} = useAuth(); // Get authenticated user
+  const { user } = useAuth(); // Get authenticated user
   const product = mockProducts.find(p => p.id === productId);
   const [images, setImages] = useState([]); // Array of HandleMedia objects
   const [comment, setComment] = useState('');
@@ -54,7 +54,7 @@ export function RefundModal({
       // Prepare media objects for upload
       const mediaInputs = selectedFiles.map(file => ({
         file,
-        type: 'Review' // Assign type as needed
+        type: 'Refund' // Assign type as needed
       }));
 
       try {
@@ -70,7 +70,7 @@ export function RefundModal({
   };
 
   // Handle image removal
-  const handleRemoveImage = async (index) => {
+  const handleRemoveImage = useCallback(async (index) => {
     const mediaToRemove = images[index];
     if (!mediaToRemove) return;
 
@@ -84,10 +84,10 @@ export function RefundModal({
       console.error('Error deleting image:', error);
       toast.error('Failed to remove image. Please try again.');
     }
-  };
+  }, [images]);
 
   // Handle form submission
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!user) {
       toast.error("You must be logged in to submit a refund request.");
       return;
@@ -99,7 +99,7 @@ export function RefundModal({
       return;
     }
 
-  setIsSubmitting(true);
+    setIsSubmitting(true);
 
     try {
       // Prepare the refund payload
@@ -112,7 +112,7 @@ export function RefundModal({
       // Send refund request to the backend
       const response = await sendRequest(
         RequestMethods.POST,
-        `/review`,
+        `/review`, 
         payload,
         true
       );
@@ -132,18 +132,15 @@ export function RefundModal({
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [user, comment, images, productId, onClose]);
 
   if (!product) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-white rounded-lg p-6">
+      <DialogContent className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-lg p-6">
         <DialogHeader className="flex justify-between items-center">
           <DialogTitle>Return/Refund Request</DialogTitle>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="w-5 h-5" />
-          </button>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -152,8 +149,8 @@ export function RefundModal({
             <Image
               src={product.medias[0]?.mediaUrl || '/placeholder.svg'}
               alt={product.title}
-              width={200}
-              height={200}
+              width={80}
+              height={80}
               className="rounded-lg object-cover"
             />
             <div>
