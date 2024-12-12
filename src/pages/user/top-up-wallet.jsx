@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,10 +19,12 @@ import WalletService from "@/services/wallet/wallet-service";
 
 export default function WalletTopUp() {
   const router = useRouter();
+  const [currentBalance, setBalance] = useState({
+    availableBalance: 0,
+  });
   const [amount, setAmount] = useState("");
-  const currentBalance = 500.0; // This would come from your actual user data
   const topUpAmount = parseFloat(amount) || 0;
-  const totalBalance = currentBalance + topUpAmount;
+  const totalBalance = currentBalance.availableBalance + topUpAmount;
 
   const MIN_AMOUNT = 1;
   const MAX_AMOUNT = 100000;
@@ -29,6 +32,25 @@ export default function WalletTopUp() {
   const handleCancel = () => {
     router.back();
   };
+
+  const loadBalance = async () => {
+    try {
+      const balanceData = await WalletService.fetchBalance();
+      if (balanceData.success) {
+        setBalance({
+          availableBalance: balanceData.data?.availableBalance || 0,
+        });
+      } else {
+        console.error("Failed to fetch balance data:", balanceData.message);
+      }
+    } catch (error) {
+      console.error("Failed to load balance:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadBalance();
+  }, []);
 
   const handleAmountChange = (e) => {
     const value = e.target.value;
@@ -112,7 +134,7 @@ export default function WalletTopUp() {
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Current Balance</span>
               <span className="font-medium">
-                MYR {currentBalance.toFixed(2)}
+                MYR {currentBalance.availableBalance.toFixed(2) || "0.00"}
               </span>
             </div>
             <div className="flex justify-between text-sm">
@@ -124,9 +146,7 @@ export default function WalletTopUp() {
                 <span className="text-gray-900">
                   Total Balance After Top Up
                 </span>
-                <span className="text-orange-600">
-                  MYR {totalBalance.toFixed(2)}
-                </span>
+                <span className="text-orange-600">MYR {totalBalance}</span>
               </div>
             </div>
           </div>
