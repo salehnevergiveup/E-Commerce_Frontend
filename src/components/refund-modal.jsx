@@ -17,7 +17,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/auth-context"; // Import useAuth
 import sendRequest from "@/services/requests/request-service"; // Import sendRequest
 import RequestMethods from "@/enums/request-methods"; // Import RequestMethods
-import { mockProducts } from '../../data/mock'; // Ensure correct path
 import { toast } from 'react-toastify'; // Import toast from react-toastify
 import S3MediaFacade from '@/services/mediaService/handle-media'; // Import S3MediaFacade
 
@@ -27,7 +26,6 @@ export function RefundModal({
   productId
 }) {
   const { user } = useAuth(); // Get authenticated user
-  const product = mockProducts.find(p => p.id === productId);
   const [images, setImages] = useState([]); // Array of HandleMedia objects
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -134,7 +132,7 @@ export function RefundModal({
     }
   }, [user, comment, images, productId, onClose]);
 
-  if (!product) return null;
+  
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -143,21 +141,7 @@ export function RefundModal({
           <DialogTitle>Return/Refund Request</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Product Information */}
-          <div className="flex gap-4 items-start">
-            <Image
-              src={product.medias[0]?.mediaUrl || '/placeholder.svg'}
-              alt={product.title}
-              width={80}
-              height={80}
-              className="rounded-lg object-cover"
-            />
-            <div>
-              <h3 className="font-semibold">{product.title}</h3>
-              <p className="text-sm text-muted-foreground">{product.category.product_category_name}</p>
-            </div>
-          </div>
+
 
           {/* Refund Information */}
           <div className="text-center p-4 bg-red-50 rounded-lg">
@@ -221,7 +205,7 @@ export function RefundModal({
           >
             {isSubmitting ? 'Submitting...' : 'Submit Refund'}
           </Button>
-        </div>
+ 
       </DialogContent>
     </Dialog>
   );
