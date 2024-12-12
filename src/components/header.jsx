@@ -4,13 +4,17 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import NavbarCartComponent from "@/components/navbar-cart";
-import { Logout, Bell, User, ListIcon, ShoppingBag, Wallet, History } from 'lucide-react';
-import NotificationsDropdown from "@/components/navbar-notification";
 import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Logout,
+  Bell,
+  User,
+  ListIcon,
+  ShoppingBag,
+  Wallet,
+  History,
+} from "lucide-react";
+import NotificationsDropdown from "@/components/navbar-notification";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,35 +78,41 @@ export default function Header() {
               <NavbarCartComponent />
               <NotificationsDropdown isAuthenticated={isAuthenticated} />
               <DropdownMenu>
-                    <ProfileMenu profileLink={"/user/profile"} />
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <ListIcon className="mr-2 h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Action Bar</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem>
-                        <Link href="/listing/my-listing" className="flex items-center">
-                          <User className="h-5 w-5" />
-                          <span>My Listings</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/all-product" className="flex items-center">
-                          <ShoppingBag className="mr-2 h-4 w-4" />
-                          <span>All Product</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/purchase-order/my-purchase" className="flex items-center">
-                          <History className="mr-2 h-4 w-4" />
-                          <span>My Purchases</span>
-                        </Link>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <ProfileMenu profileLink={"/user/profile"} />
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <ListIcon className="mr-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Action Bar</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <Link
+                      href="/listing/my-listing"
+                      className="flex items-center"
+                    >
+                      <User className="h-5 w-5" />
+                      <span>My Listings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/all-product" className="flex items-center">
+                      <ShoppingBag className="mr-2 h-4 w-4" />
+                      <span>All Product</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/purchase-order/my-purchase"
+                      className="flex items-center"
+                    >
+                      <History className="mr-2 h-4 w-4" />
+                      <span>My Purchases</span>
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             <div className="flex items-center gap-2">
@@ -145,7 +155,6 @@ export default function Header() {
                   <Button className="bg-orange-600 hover:bg-orange-700">
                     Trade Now
                   </Button>
-                  
                 </>
               )}
             </div>
