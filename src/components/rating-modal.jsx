@@ -18,7 +18,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/auth-context"; // Import useAuth
 import sendRequest from "@/services/requests/request-service"; // Import sendRequest
 import RequestMethods from "@/enums/request-methods"; // Import RequestMethods
-import { mockProducts } from '../../data/mock'; // Ensure correct path
 import { toast } from 'react-toastify'; // Import toast from react-toastify
 import S3MediaFacade from '@/services/mediaService/handle-media'; // Import S3MediaFacade
 
@@ -28,7 +27,6 @@ export function RatingModal({
   productId
 }) {
   const { user } = useAuth(); // Get authenticated user
-  const product = mockProducts.find(p => p.id === productId);
   const [images, setImages] = useState([]); // Array of HandleMedia objects
   const [rating, setRating] = useState({
     seller_service: 3,
@@ -158,8 +156,7 @@ export function RatingModal({
     }
   };
 
-  if (!product) return null;
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-lg p-6">

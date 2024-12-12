@@ -3,14 +3,33 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import NavbarCartComponent from "@/components/navbar-cart";
+import { Logout, Bell, User, ListIcon, ShoppingBag, Wallet, History } from 'lucide-react';
 import NotificationsDropdown from "@/components/navbar-notification";
-
-import ProfileMenu from "@/components/profile-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import LoginForm from "@/components/login-form";
 import RegisterForm from "@/components/register-form";
 import { useAuth } from "@/contexts/auth-context"; // Import useAuth
+import * as signalR from "@microsoft/signalr";
+import { useState, useEffect } from "react";
+import {
+  startConnection,
+  subscribeToEvent,
+  stopConnection,
+} from "@/services/websocket/websocket-service";
+import ProfileMenu from "@/components/profile-menu";
 
 export default function Header() {
   const { theme, setTheme } = useTheme();
@@ -46,11 +65,6 @@ export default function Header() {
           <Link href="/" className="text-2xl font-bold text-orange-600">
             Potato-Trade
           </Link>
-          <div className="hidden lg:block">
-            <Button variant="ghost" size="sm">
-              All Categories
-            </Button>
-          </div>
         </div>
 
         {/* Right Side */}
@@ -59,17 +73,82 @@ export default function Header() {
             <>
               <NavbarCartComponent />
               <NotificationsDropdown isAuthenticated={isAuthenticated} />
-              {/* Use the NotificationsDropdown component */}
-              <ProfileMenu profileLink={"/user/profile"} />
+              <DropdownMenu>
+                    <ProfileMenu profileLink={"/user/profile"} />
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <ListIcon className="mr-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Action Bar</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <Link href="/listing/my-listing" className="flex items-center">
+                          <User className="h-5 w-5" />
+                          <span>My Listings</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/all-product" className="flex items-center">
+                          <ShoppingBag className="mr-2 h-4 w-4" />
+                          <span>All Product</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/purchase-order/my-purchase" className="flex items-center">
+                          <History className="mr-2 h-4 w-4" />
+                          <span>My Purchases</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
             </>
           ) : (
-            <>
-              <Button variant="ghost">Login</Button>
-              <Button variant="ghost">Register</Button>
-              <Button className="bg-orange-600 hover:bg-orange-700">
-                Trade Now
-              </Button>
-            </>
+            <div className="flex items-center gap-2">
+              {/* Elements Visible Only When Not Authenticated */}
+              {!isAuthenticated && (
+                <>
+                  {/* Login Dialog */}
+                  <Dialog
+                    open={loginDialogOpen}
+                    onOpenChange={setLoginDialogOpen}
+                  >
+                    <DialogTrigger asChild>
+                      <Button variant="ghost">Login</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md p-0 bg-transparent shadow-none border-none">
+                      <LoginForm
+                        onClose={() => setLoginDialogOpen(false)} // Function to close login dialog
+                        openRegisterDialog={openRegisterDialog} // Function to open register dialog
+                      />
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Register Dialog */}
+                  <Dialog
+                    open={registerDialogOpen}
+                    onOpenChange={setRegisterDialogOpen}
+                  >
+                    <DialogTrigger asChild>
+                      <Button variant="ghost">Register</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md p-0 bg-transparent shadow-none border-none">
+                      <RegisterForm
+                        onClose={() => setRegisterDialogOpen(false)} // Function to close register dialog
+                        openLoginDialog={openLoginDialog} // Function to open login dialog
+                      />
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Trade Now Button */}
+                  <Button className="bg-orange-600 hover:bg-orange-700">
+                    Trade Now
+                  </Button>
+                  
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
