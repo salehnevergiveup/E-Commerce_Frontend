@@ -3,6 +3,12 @@ const Routes = Object.freeze({
     ORDER: 'order',
     LOGIN: 'login',
     LOGOUT: 'logout',
+    REGISTER: 'register',
+    AUTHENTICATION: 'authentication',
+    PUBLIC: 'public',
+    REFRESH_TOKEN: 'refresh-token',
+    User: 'user',
+    Admin: 'admin',
   });
   
   export default Routes;
