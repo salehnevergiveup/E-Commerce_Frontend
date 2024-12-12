@@ -79,7 +79,7 @@ export default function BroadcastNotification() {
       );
       console.log("Response from broadcast endpoint:", response);
 
-      if (response) {
+      if (response.success) {
         console.log("Broadcast success");
         toast.success("Notification broadcasted successfully.");
         router.push("/admin/notifications");

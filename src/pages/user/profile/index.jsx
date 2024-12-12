@@ -77,6 +77,40 @@ function ProfilePage() {
 
   const [notifications, setNotifications] = useState([]);
 
+  // useEffect(() => {
+  //   // Start connection to the notification hub
+  //   const connection = startConnection("notificationHub");
+
+  //   if (connection) {
+  //     // Subscribe to the "ReceiveListofLatestNotification" event
+  //     console.log("SignalR connection established.");
+  //     subscribeToEvent(
+  //       "notificationHub",
+  //       "ReceiveNotification",
+  //       (allNotifications) => {
+  //         console.log("Event triggered: allnotifications");
+  //         console.log("All notifications received:", allNotifications);
+  //         // Filter out null or undefined notifications
+  //         const validNotifications = allNotifications.filter(
+  //           (notification) =>
+  //             notification !== null && notification !== undefined
+  //         );
+
+  //         validNotifications.forEach((notification, index) => {
+  //           console.log(`Notification ${index + 1}:`, notification);
+  //         });
+
+  //         setNotifications(() => allNotifications);
+  //       }
+  //     );
+  //   }
+
+  //   // Cleanup function to stop the connection when the component is unmounted or user logs out
+  //   return () => {
+  //     stopConnection("notificationHub");
+  //   };
+  // }, []);
+
   const loadNotifications = async () => {
     try {
       const response = await sendRequest(
@@ -96,39 +130,6 @@ function ProfilePage() {
       console.error("Error loading notifications:", error);
     }
   };
-
-  // // Establish the SignalR connection
-  // useEffect(() => {
-  //   // Start connection to the notification hub
-  //   const connection = startConnection("notificationHub");
-
-  //   if (connection) {
-  //     // Subscribe to the "ReceiveNotification" event for individual notifications
-  //     subscribeToEvent(
-  //       "notificationHub",
-  //       "ReceiveNotification",
-  //       (notification) => {
-  //         const newNotification = {
-  //           id: notification.notificationId || 0,
-  //           title: notification.title || "No title",
-  //           messageText: notification.messageText || "No message",
-  //           createdAt: notification.createdAt || new Date(),
-  //         };
-
-  //         // Add the new notification to the list
-  //         setNotifications((prevNotifications) => [
-  //           newNotification,
-  //           ...prevNotifications, // Append the previous notifications
-  //         ]);
-  //       }
-  //     );
-  //   }
-
-  //   // Cleanup function to stop the connection when the component is unmounted or user logs out
-  //   return () => {
-  //     stopConnection("notificationHub");
-  //   };
-  // }, []);
 
   const loadReviews = async () => {
     try {
@@ -157,10 +158,17 @@ function ProfilePage() {
         null,
         true
       );
+      console.log(JSON.stringify(response));
       if (response.success) {
+        setNotifications((prevNotifications) =>
+          prevNotifications.map((notification) => ({
+            ...notification,
+            isRead: true,
+          }))
+        );
         console.log("marked as read successfully");
       } else {
-        console.error("Failed to mark as read:", response.message);
+        console.error("Failed to mark as read:", JSON.stringify(response));
       }
     } catch (error) {
       console.error("Error, Failed to mark as read:", error);
@@ -506,7 +514,7 @@ function ProfilePage() {
                       <Card
                         key={notification.notificationId}
                         className={`border ${
-                          notification.isRead ? "bg-gray-50" : "bg-orange-50"
+                          notification.isRead ? "bg-gray-50" : "bg-orange-100"
                         }`}
                       >
                         <CardHeader>

@@ -26,6 +26,8 @@ import {
   subscribeToEvent,
   stopConnection,
 } from "@/services/websocket/websocket-service";
+import sendRequest from "@/services/requests/request-service"; // Adjust the import path as needed
+import RequestMethods from "@/enums/request-methods";
 
 export default function Header() {
   const { theme, setTheme } = useTheme();
@@ -45,26 +47,39 @@ export default function Header() {
 
       if (connection) {
         // Subscribe to the "ReceiveListofLatestNotification" event
+        console.log("SignalR connection established.");
         subscribeToEvent(
           "notificationHub",
           "ReceiveListofLatestNotification",
-          (unreadNotifications) => {
-            // Debugging: Print each notification object line by line
-            unreadNotifications.forEach((notification, index) => {
+          (lastestNotifications) => {
+            console.log("Event triggered: ReceiveListofLatestNotification");
+            console.log("Latest notifications received:", lastestNotifications);
+            // Filter out null or undefined notifications
+            const validNotifications = lastestNotifications.filter(
+              (notification) =>
+                notification !== null && notification !== undefined
+            );
+
+            validNotifications.forEach((notification, index) => {
               console.log(`Notification ${index + 1}:`, notification);
             });
 
-            const processedNotifications = unreadNotifications.map(
+            const processedNotifications = validNotifications.map(
               (notification) => ({
-                id: notification.notificationId || 0,
-                title: notification.title || "No title",
-                messageText: notification.messageText || "No message",
-                createdAt: notification.createdAt || new Date(),
+                id: notification.notificationId,
+                title: notification.title,
+                messageText: notification.messageText,
+                updatedAt: notification.updatedAt,
+                isRead: notification.isRead,
               })
             );
 
             setNotifications(
               () => processedNotifications.slice(0, 5) // Ensure only 5 latest notifications
+            );
+            console.log(
+              "Updated notifications state:",
+              processedNotifications.slice(0, 5)
             );
           }
         );
@@ -74,21 +89,26 @@ export default function Header() {
           "notificationHub",
           "ReceiveNotification",
           (notification) => {
-            const newNotification = {
-              id: notification.notificationId || 0,
-              title: notification.title || "No title",
-              messageText: notification.messageText || "No message",
-              createdAt: notification.createdAt || new Date(),
-            };
+            if (notification) {
+              // Ensure notification is valid
+              const newNotification = {
+                id: notification.notificationId,
+                title: notification.title,
+                messageText: notification.messageText,
+                updatedAt: notification.updatedAt,
+                isRead: notification.isRead,
+              };
+              console.log("New notification received:", notification);
 
-            // Add the new notification and trim the list to 5
-            setNotifications((prevNotifications) => {
-              const updatedNotifications = [
-                newNotification,
-                ...prevNotifications,
-              ];
-              return updatedNotifications.slice(0, 5); // Ensure only 5 latest notifications
-            });
+              // Add the new notification and trim the list to 5
+              setNotifications((prevNotifications) => {
+                const updatedNotifications = [
+                  newNotification,
+                  ...prevNotifications,
+                ];
+                return updatedNotifications.slice(0, 5); // Ensure only 5 latest notifications
+              });
+            }
           }
         );
       }
@@ -100,6 +120,27 @@ export default function Header() {
     }
   }, [isAuthenticated]);
 
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const markAllAsRead = async () => {
+    try {
+      const response = await sendRequest(
+        RequestMethods.PUT,
+        `/notifications/users/update_notifications`,
+        null,
+        true
+      );
+      console.log(JSON.stringify(response));
+      if (response.success) {
+        console.log("marked as read successfully");
+      } else {
+        console.error("Failed to mark as read:", JSON.stringify(response));
+      }
+    } catch (error) {
+      console.error("Error, Failed to mark as read:", error);
+    }
+  };
+
   // Function to open the login dialog and close the register dialog
   const openLoginDialog = () => {
     setLoginDialogOpen(true); // Open the login dialog
@@ -110,11 +151,6 @@ export default function Header() {
   const openRegisterDialog = () => {
     setLoginDialogOpen(false); // Close the login dialog
     setRegisterDialogOpen(true); // Open the register dialog
-  };
-
-  const handleNotificationClick = (notificationId) => {
-    // Redirect to the notification detail page
-    router.push(`/user/profile?tab=notifications`);
   };
 
   // Function to handle logout
@@ -187,11 +223,16 @@ export default function Header() {
               {/* Notifications Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative"
+                    onClick={markAllAsRead}
+                  >
                     <Bell className="h-5 w-5" />
-                    {notifications.length > 0 && (
+                    {unreadCount > 0 && (
                       <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-orange-600 text-[10px] font-medium text-white flex items-center justify-center">
-                        {notifications.length}
+                        {unreadCount}
                       </span>
                     )}
                   </Button>
@@ -209,8 +250,13 @@ export default function Header() {
                     notifications.map((notification, index) => (
                       <React.Fragment key={index}>
                         <DropdownMenuItem
-                          className="text-gray-700 dark:text-gray-200"
-                          onClick={handleNotificationClick}
+                          className={`text-gray-700 dark:text-gray-200 ${
+                            notification.isRead ? "bg-white" : "bg-orange-100"
+                          } hover:bg-gray-100`}
+                          onClick={() => {
+                            // Handle individual notification click
+                            router.push(`/user/profile?tab=notifications`);
+                          }}
                         >
                           <div className="flex flex-col w-full truncate">
                             {/* Title and Timestamp Container */}
@@ -222,7 +268,7 @@ export default function Header() {
                               {/* Timestamp */}
                               <small className="text-xs text-gray-500 whitespace-nowrap ml-2">
                                 {new Date(
-                                  notification.createdAt
+                                  notification.updatedAt
                                 ).toLocaleString()}
                               </small>
                             </div>
