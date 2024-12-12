@@ -7,7 +7,7 @@ import AuthGuard from "@/components/auth-guard";
 import { sendRequest } from "@/services/requests/request-service";
 import RequestMethods from "@/enums/request-methods";
 import { Toaster, toast } from "react-hot-toast";
-import { getPendingOrder, cancelBuyerItem, getToReceiveItems, getReceivedItems, getRefundItems, fetchRebateAmountList, makePayment, requestRefund,cancelRefundRequest } from "@/services/buyer-item/buyer-item-service";
+import { getPendingOrder, cancelBuyerItem, getToReceiveItems, getReceivedItems, getRefundItems, fetchRebateAmountList, makePayment, requestRefund, cancelRefundRequest } from "@/services/buyer-item/buyer-item-service";
 import Image from 'next/image';
 import {
   Dialog,
@@ -19,6 +19,8 @@ import {
 import RebateListForm from '@/components/RebateListForm';
 import RefundConfirmationDialog from '@/components/RefundConfirmationDialog';
 import CancelRefundConfirmationDialog from '@/components/CancelRefundConfirmationDialog';
+import { RatingModal } from '@/components/rating-modal';
+import { RefundModal } from '@/components/refund-modal';
 
 function ErrorBoundary({ children }) {
   const [hasError, setHasError] = useState(false);
@@ -55,6 +57,9 @@ function MyPurchasePage() {
   const [refundConfirmation, setRefundConfirmation] = useState({ isOpen: false, itemId: null, itemName: '' });
   const scrollRef = useRef(null);
   const [cancelRefundConfirmation, setCancelRefundConfirmation] = useState({ isOpen: false, itemId: null, itemName: '' });
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -91,41 +96,7 @@ function MyPurchasePage() {
 
   const fetchPurchaseHistory = async () => {
     setIsLoading(true);
-    try {
-      const response = await sendRequest(
-        RequestMethods.GET,
-        '/purchase-order/history',
-        null,
-        true
-      );
 
-      if (response.success) {
-        const categorizedPurchases = {
-          toPay: [],
-          toReceive: [],
-          toRefund: []
-        };
-
-        response.data.forEach(purchase => {
-          if (purchase.status === 'PENDING_PAYMENT') {
-            categorizedPurchases.toPay.push(purchase);
-          } else if (purchase.status === 'SHIPPED') {
-            categorizedPurchases.toReceive.push(purchase);
-          } else if (purchase.status === 'REFUND_REQUESTED') {
-            categorizedPurchases.toRefund.push(purchase);
-          }
-        });
-
-        setPurchases(prev => ({ ...prev, ...categorizedPurchases }));
-      } else {
-        toast.error(response.message || "Failed to fetch purchase history.");
-      }
-    } catch (error) {
-      console.error("Fetch Purchase History Error:", error);
-      toast.error("An error occurred while fetching purchase history.");
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const fetchPendingOrder = async () => {
@@ -230,6 +201,26 @@ function MyPurchasePage() {
     }
   };
 
+  const handleRateItem = (buyerItemId) => {
+    console.log('handleRateItem called with buyerItemId:', buyerItemId);
+    const product = purchases.received.find(item => item.buyerItemId === buyerItemId) ||
+                    purchases.refund.find(item => item.buyerItemId === buyerItemId);
+    if (product) {
+      console.log('Product found:', product);
+      setSelectedProductId(product.productId);
+      if (product.buyerItemStatus === 'received') {
+        console.log('Opening RatingModal');
+        console.log('product id ' ,product.productId)
+        setIsRatingModalOpen(true);
+      } else if (product.buyerItemStatus === 'refunding') {
+        console.log('Opening RefundModal');
+        setIsRefundModalOpen(true);
+      }
+    } else {
+      console.log('Product not found for buyerItemId:', buyerItemId);
+    }
+  };
+
   const renderPendingOrder = () => {
     if (!pendingOrderDetails) return null;
 
@@ -281,6 +272,7 @@ function MyPurchasePage() {
             activeTab={activeTab}
             onRefundItem={handleRefundItem}
             onCancelRefund={handleCancelRefund}
+            onRateItem={handleRateItem}
           />
         ))}
       </div>
@@ -315,7 +307,7 @@ function MyPurchasePage() {
       <div className="container mx-auto px-4 py-8">
         <Card className="w-full mx-auto">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold">My Purchase History</CardTitle>
+            <CardTitle className="text-2xl font-bold">My Purchase</CardTitle>
             <div className="flex space-x-2 mt-4">
               <Button 
                 variant={activeTab === 'toPay' ? 'default' : 'outline'}
@@ -373,6 +365,24 @@ function MyPurchasePage() {
         onConfirm={confirmCancelRefund}
         itemName={cancelRefundConfirmation.itemName}
       />
+      <RatingModal
+        isOpen={isRatingModalOpen}
+        onClose={() => {
+          console.log('Closing RatingModal');
+          setIsRatingModalOpen(false);
+          setSelectedProductId(null);
+        }}
+        productId={selectedProductId}
+      />
+      <RefundModal
+        isOpen={isRefundModalOpen}
+        onClose={() => {
+          console.log('Closing RefundModal');
+          setIsRefundModalOpen(false);
+          setSelectedProductId(null);
+        }}
+        productId={selectedProductId}
+      />
     </ErrorBoundary>
   );
 }
@@ -403,7 +413,7 @@ const BuyerItemCard = ({ item, purchaseOrderId, onCancelItem }) => (
   </Card>
 );
 
-const BuyerItemDetailsCard = ({ item, activeTab, onRefundItem, onCancelRefund }) => (
+const BuyerItemDetailsCard = ({ item, activeTab, onRefundItem, onCancelRefund, onRateItem }) => (
   <Card>
     <CardContent className="p-4 flex items-start space-x-4">
       <Image
@@ -420,36 +430,51 @@ const BuyerItemDetailsCard = ({ item, activeTab, onRefundItem, onCancelRefund })
         {activeTab === 'received' && item.refundableBoolean && item.remainingRefundDays > 0 && (
           <p>Refundable for next {item.remainingRefundDays} days</p>
         )}
-        <div className="flex space-x-2 mt-2">
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="border-orange-600 text-orange-600 hover:bg-orange-50">
-                View Delivery Details
+        <div className="flex justify-between items-center mt-2">
+          <div className="flex space-x-2">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-orange-600 text-orange-600 hover:bg-orange-50">
+                  View Delivery Details
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-white">
+                <DialogHeader>
+                  <DialogTitle className="text-orange-600">Delivery Details</DialogTitle>
+                </DialogHeader>
+                <DeliveryDetails deliveryStages={item.buyerItemDelivery} />
+              </DialogContent>
+            </Dialog>
+            {activeTab === 'received' && item.refundableBoolean && item.remainingRefundDays > 0 && (
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={() => onRefundItem(item.buyerItemId, item.productName)}
+              >
+                Refund Item
               </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-white">
-              <DialogHeader>
-                <DialogTitle className="text-orange-600">Delivery Details</DialogTitle>
-              </DialogHeader>
-              <DeliveryDetails deliveryStages={item.buyerItemDelivery} />
-            </DialogContent>
-          </Dialog>
-          {activeTab === 'received' && item.refundableBoolean && item.remainingRefundDays > 0 && (
-            <Button 
-              variant="secondary" 
+            )}
+            {activeTab === 'refund' && (
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => onCancelRefund(item.buyerItemId, item.productName)}
+              >
+                Cancel Refund
+              </Button>
+            )}
+          </div>
+          {(activeTab === 'received' || activeTab === 'refund') && (
+            <Button
+              variant="outline"
               size="sm"
-              onClick={() => onRefundItem(item.buyerItemId, item.productName)}
+              onClick={() => {
+                console.log('Rate button clicked for item:', item.buyerItemId);
+                onRateItem(item.buyerItemId);
+              }}
+              className="border-orange-600 text-orange-600 hover:bg-orange-50"
             >
-              Refund Item
-            </Button>
-          )}
-          {activeTab === 'refund' && (
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={() => onCancelRefund(item.buyerItemId, item.productName)}
-            >
-              Cancel Refund
+              {activeTab === 'received' ? 'Rate' : 'Review/Comment'}
             </Button>
           )}
         </div>

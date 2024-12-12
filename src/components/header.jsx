@@ -27,6 +27,7 @@ import {
   subscribeToEvent,
   stopConnection,
 } from "@/services/websocket/websocket-service";
+import ProfileMenu from "@/components/profile-menu";
 
 export default function Header() {
   const { theme, setTheme } = useTheme();
@@ -126,11 +127,6 @@ export default function Header() {
           <Link href="/" className="text-2xl font-bold text-orange-600">
             Potato-Trade
           </Link>
-          <div className="hidden lg:block">
-            <Button variant="ghost" size="sm">
-              All Categories
-            </Button>
-          </div>
         </div>
 
         {/* Right Side */}
@@ -248,33 +244,29 @@ export default function Header() {
               <ProfileMenu profileLink={"/user/profile"} />
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
-                    <User className="h-5 w-5" />
+                  <ListIcon className="mr-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuLabel>Action Bar</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
-                    <ListIcon className="mr-2 h-4 w-4" />
+                  <Link href="/listing/my-listing" className="flex items-center">
+                    <User className="h-5 w-5" />
                     <span>My Listings</span>
+                    </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/all-product" className="flex items-center">
                     <ShoppingBag className="mr-2 h-4 w-4" />
-                    <span>Buy Product</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Wallet className="mr-2 h-4 w-4" />
-                    <span>Wallet</span>
+                    <span>All Product</span>
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/purchase-order/my-purchase" className="flex items-center">
                       <History className="mr-2 h-4 w-4" />
-                      <span>My Purchases History</span>
+                      <span>My Purchases</span>
                     </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

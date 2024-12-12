@@ -294,4 +294,219 @@ export async function cancelBuyerItem(purchaseOrderId: number, productId: number
       return { success: false, message: "An unexpected error occurred while canceling the refund request" };
     }
   }
+
+  export async function getAllBuyerItems(): Promise<BuyerItem[]> {
+    try {
+      const endpoint = new EndPointBuilder()
+        .addRoute('buyer-item')
+        .addRoute('get-all')
+        .build();
+  
+      const response = await sendRequest(
+        RequestMethod.GET,
+        endpoint,
+        null,
+        true // This request requires authentication
+      );
+  
+      if (response && response.success && Array.isArray(response.data)) {
+        return response.data;
+      } else {
+        console.error('Failed to fetch buyer items:',  response?.message  || "Failed to fetch buyer items");
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching buyer items:', error);
+      return [];
+    }
+  }
+  
+  export async function updateDeliveryStageArrivedSortingFacility(buyerItemId: number): Promise<{ success: boolean; message: string; data?: { message: string } }> {
+    try {
+      const endpoint = new EndPointBuilder()
+        .addRoute('buyer-item')
+        .addRoute('create-stage')
+        .addRoute('arrived-sorting-facility')
+        .addQuery(`buyerItemId=${buyerItemId}`)
+        .build();
+  
+      const response = await sendRequest(
+        RequestMethod.POST,
+        endpoint,
+        null,
+        true
+      );
+  
+      if (response.success) {
+        return { 
+          success: true, 
+          message: response?.message || "Delivery stage 'Arrived in Sorting Facility' created successfully.",
+          data: response?.data
+        };
+      } else {
+        return { success: false, message: response.message || "Failed to update delivery stage." };
+      }
+    } catch (error) {
+      console.error('Error updating delivery stage:', error);
+      return { success: false, message: "An unexpected error occurred while updating the delivery stage." };
+    }
+  }
+  
+  export async function updateDeliveryStageArrivedDeliveryHub(buyerItemId: number): Promise<{ success: boolean; message: string; data?: { message: string } }> {
+    try {
+      const endpoint = new EndPointBuilder()
+        .addRoute('buyer-item')
+        .addRoute('create-stage')
+        .addRoute('arrived-delivery-hub')
+        .addQuery(`buyerItemId=${buyerItemId}`)
+        .build();
+  
+      const response = await sendRequest(
+        RequestMethod.POST,
+        endpoint,
+        null,
+        true
+      );
+  
+      if (response.success) {
+        return { 
+          success: true, 
+          message: response?.message || "Delivery stage 'Arrived in Sorting Delivery Hub' created successfully.",
+          data: response?.data
+        };
+      } else {
+        return { success: false, message: response.message || "Failed to update delivery stage." };
+      }
+    } catch (error) {
+      console.error('Error updating delivery stage:', error);
+      return { success: false, message: "An unexpected error occurred while updating the delivery stage." };
+    }
+  }
+  
+  export async function updateDeliveryStageOutForDelivery(buyerItemId: number): Promise<{ success: boolean; message: string; data?: { message: string } }> {
+    try {
+      const endpoint = new EndPointBuilder()
+        .addRoute('buyer-item')
+        .addRoute('create-stage')
+        .addRoute('out-for-delivery')
+        .addQuery(`buyerItemId=${buyerItemId}`)
+        .build();
+  
+      const response = await sendRequest(
+        RequestMethod.POST,
+        endpoint,
+        null,
+        true
+      );
+  
+      if (response.success) {
+        return { 
+          success: true, 
+          message: response?.message || "Delivery stage 'Out for Delivery' created successfully.",
+          data: response?.data
+        };
+      } else {
+        return { success: false, message: response.message || "Failed to update delivery stage." };
+      }
+    } catch (error) {
+      console.error('Error updating delivery stage:', error);
+      return { success: false, message: "An unexpected error occurred while updating the delivery stage." };
+    }
+  }
+
+  export async function updateDeliveryStageItemDelivered(buyerItemId: number): Promise<{ success: boolean; message: string; data?: { message: string } }> {
+    try {
+      const endpoint = new EndPointBuilder()
+        .addRoute('buyer-item')
+        .addRoute('create-stage')
+        .addRoute('item-delivered')
+        .addQuery(`buyerItemId=${buyerItemId}`)
+        .build();
+  
+      const response = await sendRequest(
+        RequestMethod.POST,
+        endpoint,
+        null,
+        true
+      );
+  
+      if (response.success) {
+        return { 
+          success: true, 
+          message: response?.message || "Delivery stage 'Item Delivered' created successfully.",
+          data: response?.data
+        };
+      } else {
+        return { success: false, message: response.message || "Failed to update delivery stage." };
+      }
+    } catch (error) {
+      console.error('Error updating delivery stage:', error);
+      return { success: false, message: "An unexpected error occurred while updating the delivery stage." };
+    }
+  }
+  
+  export async function acceptRefundRequest(buyerItemId: number): Promise<{ success: boolean; message: string }> {
+    try {
+      const endpoint = new EndPointBuilder()
+        .addRoute(Routes.PRODUCT)
+        .addRoute('accept-refund')
+        .build();
+  
+      const response = await sendRequest(
+        RequestMethod.POST,
+        endpoint,
+        { BuyerItemId: buyerItemId },
+        true // This request requires authentication
+      );
+  
+      if (response?.success) {
+        return { success: true, message: response?.message || "Refund request has been successfully accepted." };
+      } else {
+        return { success: false, message: response.message || "Failed to accept refund request" };
+      }
+    } catch (error) {
+      console.error('Error accepting refund request:', error);
+      return { success: false, message: "An unexpected error occurred while accepting the refund request" };
+    }
+  }
+
+  interface RefundBuyerItemResponse {
+    BuyerItemId: number;
+  }
+  
+  export async function getRefundBuyerItemId(productId: number): Promise<{ success: boolean; message: string; data?: RefundBuyerItemResponse }> {
+    try {
+      const endpoint = new EndPointBuilder()
+        .addRoute(Routes.PRODUCT)
+        .addRoute('get-refund-product-buyer-item-id')
+        .addQuery(`productId=${productId}`)
+        .build();
+  
+      const response = await sendRequest(
+        RequestMethod.GET,
+        endpoint,
+        null,
+        true // This request requires authentication
+      );
+  
+      if (response.success) {
+        return {
+          success: true,
+          message: response?.message || "Successfully retrieved refund buyer item ID.",
+          data: response?.data
+        };
+      } else {
+        return {
+          success: false,
+          message: response.message || "Failed to retrieve refund buyer item ID.",
+        };
+      }
+    } catch (error) {
+      console.error('Error getting refund buyer item ID:', error);
+      return {
+        success: false,
+        message: "An unexpected error occurred while retrieving the refund buyer item ID.",
+      };
+    }
+  }
   

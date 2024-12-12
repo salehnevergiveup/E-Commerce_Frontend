@@ -50,12 +50,12 @@ function HomePage() {
           getAllProducts(),
         ])
         if (fetchedCategories && fetchedCategories.length > 0) {
-          setCategories(fetchedCategories.sort((a, b) => (b.numberOfItems || 0) - (a.numberOfItems || 0)).slice(0, 10))
+          setCategories(((fetchedCategories || []).sort((a, b) => (b.numberOfItems || 0) - (a.numberOfItems || 0))).slice(0, 10));
         } else {
           setCategories([])
         }
-        setAllProducts(fetchedProducts.slice(0, 10))
-        setDisplayedProducts(fetchedProducts.slice(0, 10))
+        setAllProducts((fetchedProducts || []).slice(0, 10));
+        setDisplayedProducts((fetchedProducts || []).slice(0, 10));
         setIsLoading(false)
       } catch (err) {
         console.error('Error fetching data:', err)
@@ -128,7 +128,7 @@ function HomePage() {
     try {
       const fetchedProducts = await getProductsByCategory(categoryId)
       setAllProducts(fetchedProducts.slice(0, 10))
-      setDisplayedProducts(fetchedProducts.slice(0, 10))
+      setDisplayedProducts((fetchedProducts || []).slice(0, 10));
     } catch (err) {
       console.error('Error fetching products by category:', err)
       setError('Failed to load products for this category. Please try again later.')
@@ -143,8 +143,8 @@ function HomePage() {
 
   const handleRevertToAllProducts = () => {
     setSelectedCategory(null)
-    setDisplayedProducts(allProducts.slice(0, 10))
-  }
+    setDisplayedProducts((allProducts || []).slice(0, 10));
+    }
 
   const sortedCategories = [...categories].sort((a, b) => 
     a.productCategoryName.localeCompare(b.productCategoryName)
@@ -373,7 +373,7 @@ function HomePage() {
           isAuthenticated={isAuthenticated}
           onProductAdded={async () => {
             const updatedProducts = await getAllProducts()
-            setAllProducts(updatedProducts.slice(0, 10))
+            setAllProducts(updatedProducts.slice(0,10))
             setDisplayedProducts(updatedProducts.slice(0, 10))
           }}
         />

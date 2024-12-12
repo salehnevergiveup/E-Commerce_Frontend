@@ -162,8 +162,9 @@ function AllProductsPage() {
 
   const indexOfLastProduct = currentPage * productsPerPage
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage
-  const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct)
-  const totalPages = Math.ceil(filteredProducts.length / productsPerPage)
+  const safeFilteredProducts = Array.isArray(filteredProducts) ? filteredProducts : [];
+  const currentProducts = safeFilteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);  
+  const totalPages = Math.ceil(safeFilteredProducts.length / productsPerPage);
 
   const nextPage = () => {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
@@ -208,7 +209,7 @@ function AllProductsPage() {
             <DialogContent className="sm:max-w-[425px] bg-white">
               <h2 className="text-lg font-semibold mb-4">Select a Category</h2>
               <div className="grid gap-2">
-                {categories.map((category) => (
+              {(categories ?? []).map((category) => (
                   <Button
                     key={category.productCategoryId}
                     variant={selectedCategory === category.productCategoryId ? "secondary" : "outline"}
@@ -233,7 +234,7 @@ function AllProductsPage() {
           <SelectedCategoryInfo category={selectedCategoryDetails} />
         )}
         <div className="text-sm text-gray-600 mb-4">
-          {filteredProducts.length} items found
+        {(filteredProducts ?? []).length} items found
         </div>
       </div>
 
