@@ -44,7 +44,7 @@ function ProfilePage() {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tab = searchParams.get("tab") || "listings"; // Default to "listings" if no 'tab' query parameter
+  const tab = searchParams.get("tab") || "balance"; // Default to "listings" if no 'tab' query parameter
   console.log("Active tab from URL:", tab);
 
   const [userDetails, setUserDetails] = useState(null);
@@ -76,40 +76,6 @@ function ProfilePage() {
   };
 
   const [notifications, setNotifications] = useState([]);
-
-  // useEffect(() => {
-  //   // Start connection to the notification hub
-  //   const connection = startConnection("notificationHub");
-
-  //   if (connection) {
-  //     // Subscribe to the "ReceiveListofLatestNotification" event
-  //     console.log("SignalR connection established.");
-  //     subscribeToEvent(
-  //       "notificationHub",
-  //       "ReceiveNotification",
-  //       (allNotifications) => {
-  //         console.log("Event triggered: allnotifications");
-  //         console.log("All notifications received:", allNotifications);
-  //         // Filter out null or undefined notifications
-  //         const validNotifications = allNotifications.filter(
-  //           (notification) =>
-  //             notification !== null && notification !== undefined
-  //         );
-
-  //         validNotifications.forEach((notification, index) => {
-  //           console.log(`Notification ${index + 1}:`, notification);
-  //         });
-
-  //         setNotifications(() => allNotifications);
-  //       }
-  //     );
-  //   }
-
-  //   // Cleanup function to stop the connection when the component is unmounted or user logs out
-  //   return () => {
-  //     stopConnection("notificationHub");
-  //   };
-  // }, []);
 
   const loadNotifications = async () => {
     try {
@@ -397,31 +363,6 @@ function ProfilePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <Card className="bg-gray-50">
-                      <CardContent className="p-4">
-                        <div className="flex items-start space-x-4">
-                          <ExclamationTriangleIcon className="h-5 w-5 text-orange-600 mt-1" />
-                          <div>
-                            <h4 className="font-semibold">
-                              Verify your identity to cash out
-                            </h4>
-                            <p className="text-sm text-muted-foreground">
-                              To transfer money into your bank account, you'll
-                              need to verify your identity as required by
-                              Malaysian government regulations
-                            </p>
-                            <Button
-                              variant="link"
-                              className="text-orange-600 px-0 mt-2"
-                            >
-                              Verify now
-                              <ArrowRightIcon className="ml-2 h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
                     {balance ? (
                       <div className="grid gap-4 md:grid-cols-2">
                         {/* Available Balance Card */}
@@ -468,7 +409,7 @@ function ProfilePage() {
                       <p>Loading balance information...</p>
                     )}
 
-                    <div>
+                    {/* <div>
                       <h4 className="font-semibold mb-4">
                         Transaction History
                       </h4>
@@ -485,7 +426,7 @@ function ProfilePage() {
                           in your Balance!
                         </p>
                       </div>
-                    </div>
+                    </div> */}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -643,8 +584,6 @@ function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-
-        <button>Transfer</button>
       </div>
     </div>
   );
