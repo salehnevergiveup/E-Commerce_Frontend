@@ -34,7 +34,6 @@ export function ReviewCard({ review }) {
     ? userProfileMedia.mediaUrl
     : "/placeholder.svg";
 
-  // Safely access product image
   const productImageUrl =
     review.product?.medias?.[0]?.mediaUrl || "https://potato-trade.s3.ap-southeast-1.amazonaws.com/placeholder.png";
 
