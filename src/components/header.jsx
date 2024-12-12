@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import NavbarCartComponent from "@/components/navbar-cart";
 import NotificationsDropdown from "@/components/navbar-notification";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 import ProfileMenu from "@/components/profile-menu";
 import LoginForm from "@/components/login-form";
@@ -59,17 +60,52 @@ export default function Header() {
             <>
               <NavbarCartComponent />
               <NotificationsDropdown isAuthenticated={isAuthenticated} />
-              {/* Use the NotificationsDropdown component */}
               <ProfileMenu profileLink={"/user/profile"} />
             </>
           ) : (
-            <>
-              <Button variant="ghost">Login</Button>
-              <Button variant="ghost">Register</Button>
-              <Button className="bg-orange-600 hover:bg-orange-700">
-                Trade Now
-              </Button>
-            </>
+            <div className="flex items-center gap-2">
+              {/* Elements Visible Only When Not Authenticated */}
+              {!isAuthenticated && (
+                <>
+                  {/* Login Dialog */}
+                  <Dialog
+                    open={loginDialogOpen}
+                    onOpenChange={setLoginDialogOpen}
+                  >
+                    <DialogTrigger asChild>
+                      <Button variant="ghost">Login</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md p-0 bg-transparent shadow-none border-none">
+                      <LoginForm
+                        onClose={() => setLoginDialogOpen(false)} // Function to close login dialog
+                        openRegisterDialog={openRegisterDialog} // Function to open register dialog
+                      />
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Register Dialog */}
+                  <Dialog
+                    open={registerDialogOpen}
+                    onOpenChange={setRegisterDialogOpen}
+                  >
+                    <DialogTrigger asChild>
+                      <Button variant="ghost">Register</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md p-0 bg-transparent shadow-none border-none">
+                      <RegisterForm
+                        onClose={() => setRegisterDialogOpen(false)} // Function to close register dialog
+                        openLoginDialog={openLoginDialog} // Function to open login dialog
+                      />
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Trade Now Button */}
+                  <Button className="bg-orange-600 hover:bg-orange-700">
+                    Trade Now
+                  </Button>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
