@@ -1,31 +1,31 @@
 // src/components/NavbarCartComponent.jsx
-import { useState, useEffect } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import Link from 'next/link';
+import Link from "next/link";
 
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { 
-  startConnection, 
-  subscribeToEvent, 
-  stopConnection 
-} from '@/services/websocket/websocket-service';
+import {
+  getOrCreateConnection,
+  subscribeToEvent,
+  stopConnection,
+} from "@/services/websocket/websocket-service";
 
 export default function NavbarCartComponent() {
   const [cart, setCart] = useState({ numberOfItems: 0, totalPrice: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const hubName = 'cartHub';
-    const connection = startConnection(hubName);
+    const hubName = "cartHub";
+    const connection = getOrCreateConnection(hubName);
 
     if (connection) {
-      subscribeToEvent(hubName, 'ReceiveCartUpdate', (cartInfo) => {
+      subscribeToEvent(hubName, "ReceiveCartUpdate", (cartInfo) => {
         setCart({
           numberOfItems: cartInfo.numberOfItems,
           totalPrice: cartInfo.totalPrice,
@@ -36,7 +36,7 @@ export default function NavbarCartComponent() {
 
     // Cleanup on unmount
     return () => {
-      stopConnection(hubName);
+      stopConnection(hubName); // This will only stop if no other components are using it
     };
   }, []);
 
@@ -51,7 +51,8 @@ export default function NavbarCartComponent() {
           {totalItems > 0 && (
             <Badge
               variant="destructive"
-              className="absolute -top-2 -right-2 px-2 py-1 text-xs">
+              className="absolute -top-2 -right-2 px-2 py-1 text-xs"
+            >
               {totalItems}
             </Badge>
           )}
@@ -63,7 +64,7 @@ export default function NavbarCartComponent() {
           <div className="space-y-2">
             <h4 className="font-medium leading-none">Your Cart</h4>
             <p className="text-sm text-muted-foreground">
-              {isLoading ? 'Loading...' : `${totalItems} items in your cart`}
+              {isLoading ? "Loading..." : `${totalItems} items in your cart`}
             </p>
           </div>
           {!isLoading && (
@@ -80,7 +81,9 @@ export default function NavbarCartComponent() {
             </div>
           )}
           <Link href="/user/checkout">
-            <Button className="w-full bg-orange-500 hover:bg-orange-600">View Cart</Button>
+            <Button className="w-full bg-orange-500 hover:bg-orange-600">
+              View Cart
+            </Button>
           </Link>
         </div>
       </PopoverContent>

@@ -5,7 +5,6 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import ChatAssistantPreviewComponent from "@/components/chat-assistant-preview";
 
-
 const inter = Inter({ subsets: ["latin"] });
 
 export default function UserLayout({ children }) {
@@ -18,9 +17,9 @@ export default function UserLayout({ children }) {
     >
       <div className={`${inter.className} relative min-h-screen flex flex-col`}>
         <Header />
-        <main 
-        className="flex-1">{children}
-        <ChatAssistantPreviewComponent />
+        <main className="flex-1">
+          {children}
+          <ChatAssistantPreviewComponent />
         </main>
         <Footer />
       </div>

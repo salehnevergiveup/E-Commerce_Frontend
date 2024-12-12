@@ -1,7 +1,7 @@
-// pages/user/profile.jsx
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -10,11 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/contexts/auth-context"; // Import useAuth
 import UserLayout from "@/layouts/user-layout";
 import AuthGuard from "@/components/auth-guard";
 import WalletService from "@/services/wallet/wallet-service";
-import { ReviewCard } from "@/components/review-card"; // Import the ReviewCard component
+import {
+  startConnection,
+  subscribeToEvent,
+  stopConnection,
+} from "@/services/websocket/websocket-service";
 
 import {
   Pencil,
@@ -33,25 +37,27 @@ import {
   ExclamationTriangleIcon,
   ArrowRightIcon,
 } from "@radix-ui/react-icons";
-import sendRequest from "@/services/requests/request-service";
+import sendRequest from "@/services/requests/request-service"; // Adjust the import path as needed
 import RequestMethods from "@/enums/request-methods";
 
 function ProfilePage() {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab") || "balance"; // Default to "listings" if no 'tab' query parameter
+  console.log("Active tab from URL:", tab);
+
   const [userDetails, setUserDetails] = useState(null);
   const [balance, setBalance] = useState({
     availableBalance: 0,
     onHoldBalance: 0,
   });
   const [currentPage, setCurrentPage] = useState(1);
-
+  const [reviews, setReviews] = useState([]);
   const notificationsPerPage = 10;
 
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const [reviews, setReviews] = useState([]); // State to hold reviews
+  const [searchQuery, setSearchQuery] = useState(""); // Added state for search query
 
   const loadBalance = async () => {
     try {
@@ -69,6 +75,8 @@ function ProfilePage() {
     }
   };
 
+  const [notifications, setNotifications] = useState([]);
+
   const loadNotifications = async () => {
     try {
       const response = await sendRequest(
@@ -78,11 +86,11 @@ function ProfilePage() {
         true
       );
       if (response.success) {
-        setNotifications(response.data);
-        console.log("Notifications fetched:", response.data);
+        setNotifications(response.data); // Update the notifications state
+        console.log("test test test" + response);
       } else {
         console.error("Failed to fetch notifications:", response.message);
-        console.log("Response:", JSON.stringify(response));
+        console.log("test test test" + JSON.stringify(response));
       }
     } catch (error) {
       console.error("Error loading notifications:", error);
@@ -110,16 +118,26 @@ function ProfilePage() {
 
   const markAllAsRead = async () => {
     try {
-      // Placeholder for marking all notifications as read
-      await fetch("/api/notifications/mark-all-read", { method: "POST" });
-      setNotifications((prevNotifications) =>
-        prevNotifications.map((notification) => ({
-          ...notification,
-          isRead: true,
-        }))
+      const response = await sendRequest(
+        RequestMethods.POST,
+        `/notifications/users/update_notifications`,
+        null,
+        true
       );
+      console.log(JSON.stringify(response));
+      if (response.success) {
+        setNotifications((prevNotifications) =>
+          prevNotifications.map((notification) => ({
+            ...notification,
+            isRead: true,
+          }))
+        );
+        console.log("marked as read successfully");
+      } else {
+        console.error("Failed to mark as read:", JSON.stringify(response));
+      }
     } catch (error) {
-      console.error("Error marking notifications as read:", error);
+      console.error("Error, Failed to mark as read:", error);
     }
   };
 
@@ -146,16 +164,14 @@ function ProfilePage() {
     };
 
     const initialize = async () => {
-      await fetchUser();
-      await loadBalance();
+      await fetchUser(); // Fetch user details first
+      await loadBalance(); // Then fetch balance if user is defined
       await loadNotifications();
-      await loadReviews(); // Fetch reviews on initialization
+      await loadReviews();
     };
 
-    if (user) {
-      initialize();
-    }
-  }, [user]);
+    initialize(); // Call initialize function when component is mounted
+  }, []);
 
   const handleNavigateToTopUp = async () => {
     try {
@@ -170,7 +186,7 @@ function ProfilePage() {
   };
 
   const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
+    switch (status.toLowerCase()) {
       case "active":
         return "bg-green-500";
       case "pending":
@@ -183,8 +199,6 @@ function ProfilePage() {
         return "bg-gray-500";
     }
   };
-
-  const [notifications, setNotifications] = useState([]);
 
   const totalPages = Math.ceil(notifications.length / notificationsPerPage);
   const indexOfLastNotification = currentPage * notificationsPerPage;
@@ -227,10 +241,16 @@ function ProfilePage() {
     : null;
 
   // Determine the cover image source
-  const coverSrc = coverMedia && coverMedia.mediaUrl ? coverMedia.mediaUrl : "/placeholder.svg";
+  const coverSrc =
+    coverMedia && coverMedia.mediaUrl
+      ? coverMedia.mediaUrl
+      : "/placeholder.svg";
 
   // Determine the avatar image source
-  const avatarSrc = avatarMedia && avatarMedia.mediaUrl ? avatarMedia.mediaUrl : "/placeholder.svg";
+  const avatarSrc =
+    avatarMedia && avatarMedia.mediaUrl
+      ? avatarMedia.mediaUrl
+      : "/placeholder.svg";
 
   return (
     <div className="container mx-auto px-4 py-3">
@@ -251,15 +271,22 @@ function ProfilePage() {
         <CardContent className="p-6">
           <div className="flex items-start gap-6">
             <Avatar className="h-24 w-24 border-4 border-white">
-              <AvatarImage src={avatarSrc} alt={userDetails.name || "User Avatar"} />
+              <AvatarImage
+                src={avatarSrc}
+                alt={userDetails.name || "User Avatar"}
+              />
               <AvatarFallback>
-                {userDetails.name ? userDetails.name.charAt(0).toUpperCase() : "U"}
+                {userDetails.name
+                  ? userDetails.name.charAt(0).toUpperCase()
+                  : "U"}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">{userDetails.name || "No Name"}</h2>
+                  <h2 className="text-2xl font-bold">
+                    {userDetails.name || "No Name"}
+                  </h2>
                   <p className="text-muted-foreground">
                     @{userDetails.userName}
                   </p>
@@ -285,138 +312,125 @@ function ProfilePage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Tabs Section */}
       <div className="mt-6">
         <Tabs
-          defaultValue="balance"
+          value={tab} // Bind Tabs' value to the tab from URL
           onValueChange={(value) => {
+            router.push(
+              {
+                pathname: router.pathname, // Keep the current path
+                query: { ...Object.fromEntries(searchParams), tab: value }, // Update the 'tab' query parameter
+              },
+              undefined,
+              { shallow: true } // Prevent full page reload
+            );
+
             if (value === "balance") loadBalance();
             if (value === "notifications") loadNotifications();
-            if (value === "reviews") loadReviews(); // Load reviews when the tab is selected
+            if (value === "reviews") loadReviews();
           }}
         >
           <TabsList>
             {/* Removed Listings Tab */}
-            {userDetails.roleType && userDetails.roleType.toLowerCase() === "user" && (
-              <TabsTrigger value="balance">Balance</TabsTrigger>
-            )}
+            {userDetails.roleType &&
+              userDetails.roleType.toLowerCase() === "user" && (
+                <TabsTrigger value="balance">Balance</TabsTrigger>
+              )}
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="reviews">Reviews</TabsTrigger> {/* Added Reviews Tab */}
+            <TabsTrigger value="reviews">Reviews</TabsTrigger>{" "}
+            {/* Added Reviews Tab */}
           </TabsList>
 
           {/* Balance Tab Content */}
-          {userDetails.roleType && userDetails.roleType.toLowerCase() === "user" && (
-            <TabsContent value="balance" className="mt-4">
-              {/* Balance content remains unchanged */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Wallet className="mr-2 h-5 w-5 text-orange-600" />
-                      My Balance
-                    </div>
-                    <Button
-                      onClick={handleNavigateToTopUp}
-                      className="bg-orange-600 hover:bg-orange-700 flex items-center"
-                    >
-                      <DollarSign className="mr-2 h-4 w-4" />
-                      Top Up Wallet
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <Card className="bg-gray-50">
-                    <CardContent className="p-4">
-                      <div className="flex items-start space-x-4">
-                        <ExclamationTriangleIcon className="h-5 w-5 text-orange-600 mt-1" />
-                        <div>
-                          <h4 className="font-semibold">
-                            Verify your identity to cash out
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            To transfer money into your bank account, you'll
-                            need to verify your identity as required by
-                            Malaysian government regulations
-                          </p>
-                          <Button
-                            variant="link"
-                            className="text-orange-600 px-0 mt-2"
-                          >
-                            Verify now
-                            <ArrowRightIcon className="ml-2 h-4 w-4" />
-                          </Button>
-                        </div>
+          {userDetails.roleType &&
+            userDetails.roleType.toLowerCase() === "user" && (
+              <TabsContent value="balance" className="mt-4">
+                {/* Balance content remains unchanged */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Wallet className="mr-2 h-5 w-5 text-orange-600" />
+                        My Balance
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  {balance ? (
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {/* Available Balance Card */}
-                      <Card
-                        className={`${
-                          balance.availableBalance > 0
-                            ? "bg-green-50 border-green-500"
-                            : "bg-red-50 border-red-500"
-                        } border`}
+                      <Button
+                        onClick={handleNavigateToTopUp}
+                        className="bg-orange-600 hover:bg-orange-700 flex items-center"
                       >
-                        <CardHeader>
-                          <CardTitle className="flex items-center justify-between">
-                            <span>Available Balance</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-2xl font-bold text-black">
-                            RM{balance.availableBalance.toFixed(2)}
-                          </p>
-                          {balance.availableBalance <= 0 && (
-                            <p className="text-sm text-red-600 mt-2">
-                              Please remember to top up your wallet before
-                              purchasing items
+                        <DollarSign className="mr-2 h-4 w-4" />
+                        Top Up Wallet
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {balance ? (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {/* Available Balance Card */}
+                        <Card
+                          className={`${
+                            balance.availableBalance > 0
+                              ? "bg-green-50 border-green-500"
+                              : "bg-red-50 border-red-500"
+                          } border`}
+                        >
+                          <CardHeader>
+                            <CardTitle className="flex items-center justify-between">
+                              <span>Available Balance</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-2xl font-bold text-black">
+                              RM{balance.availableBalance.toFixed(2)}
                             </p>
-                          )}
-                        </CardContent>
-                      </Card>
+                            {balance.availableBalance <= 0 && (
+                              <p className="text-sm text-red-600 mt-2">
+                                Please remember to top up your wallet before
+                                purchasing items
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
 
-                      {/* On Hold Balance Card */}
-                      <Card className="bg-yellow-50 border-yellow-500 border">
-                        <CardHeader>
-                          <CardTitle className="flex items-center justify-between">
-                            <span>On Hold Balance</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-2xl font-bold text-black">
-                            RM{balance.onHoldBalance.toFixed(2)}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  ) : (
-                    <p>Loading balance information...</p>
-                  )}
+                        {/* On Hold Balance Card */}
+                        <Card className="bg-yellow-50 border-yellow-500 border">
+                          <CardHeader>
+                            <CardTitle className="flex items-center justify-between">
+                              <span>On Hold Balance</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-2xl font-bold text-black">
+                              RM{balance.onHoldBalance.toFixed(2)}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    ) : (
+                      <p>Loading balance information...</p>
+                    )}
 
-                  <div>
-                    <h4 className="font-semibold mb-4">Transaction History</h4>
-                    <div className="text-center py-8">
-                      <Image
-                        src="/placeholder.svg"
-                        alt="Empty transactions"
-                        width={120}
-                        height={120}
-                        className="mx-auto mb-4"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Start selling with Carousell Protection and get money in
-                        your Balance!
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+                    {/* <div>
+                      <h4 className="font-semibold mb-4">
+                        Transaction History
+                      </h4>
+                      <div className="text-center py-8">
+                        <Image
+                          src="/placeholder.svg"
+                          alt="Empty transactions"
+                          width={120}
+                          height={120}
+                          className="mx-auto mb-4"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Start selling with Carousell Protection and get money
+                          in your Balance!
+                        </p>
+                      </div>
+                    </div> */}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
 
           {/* Notifications Tab Content */}
           <TabsContent value="notifications" className="mt-4">
@@ -441,7 +455,7 @@ function ProfilePage() {
                       <Card
                         key={notification.notificationId}
                         className={`border ${
-                          notification.isRead ? "bg-gray-50" : "bg-orange-50"
+                          notification.isRead ? "bg-gray-50" : "bg-orange-100"
                         }`}
                       >
                         <CardHeader>
@@ -461,7 +475,7 @@ function ProfilePage() {
                     <div className="flex justify-between items-center mt-4">
                       <Button
                         disabled={currentPage === 1}
-                        onClick={() => handlePageChange("prev")}
+                        onClick={() => setCurrentPage(currentPage - 1)}
                       >
                         Previous
                       </Button>
@@ -470,7 +484,7 @@ function ProfilePage() {
                       </span>
                       <Button
                         disabled={currentPage === totalPages}
-                        onClick={() => handlePageChange("next")}
+                        onClick={() => setCurrentPage(currentPage + 1)}
                       >
                         Next
                       </Button>
@@ -515,7 +529,8 @@ function ProfilePage() {
                         You have not written any reviews yet.
                       </h3>
                       <p className="text-muted-foreground">
-                        Once you purchase and use products, you can leave reviews here.
+                        Once you purchase and use products, you can leave
+                        reviews here.
                       </p>
                     </CardContent>
                   </Card>
@@ -526,9 +541,7 @@ function ProfilePage() {
         </Tabs>
       </div>
 
-      {/* Contact and Additional Information Cards */}
       <div className="grid gap-4 md:grid-cols-2 mt-6">
-        {/* Contact Information */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Contact Information</CardTitle>
@@ -536,16 +549,15 @@ function ProfilePage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
               <EnvelopeClosedIcon className="h-4 w-4 text-orange-600" />
-              <span>{userDetails.email || "No Email"}</span>
+              <span>{userDetails.email}</span>
             </div>
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-orange-600" />
-              <span>{userDetails.phoneNumber || "No Phone Number"}</span>
+              <span>{userDetails.phoneNumber}</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Additional Information */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Additional Information</CardTitle>
@@ -553,23 +565,25 @@ function ProfilePage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-orange-600" />
-              <span>{userDetails.billingAddress || "No Billing Address"}</span>
+              <span>{userDetails.billingAddress}</span>
             </div>
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-orange-600" />
               <span>
                 {userDetails.createdAt
-                  ? `Joined ${new Date(userDetails.createdAt).toLocaleDateString()}`
+                  ? `Joined ${new Date(
+                      userDetails.createdAt
+                    ).toLocaleDateString()}`
+                  : "No Join Date"}
+                {userDetails.createdAt
+                  ? `Joined ${new Date(
+                      userDetails.createdAt
+                    ).toLocaleDateString()}`
                   : "No Join Date"}
               </span>
             </div>
           </CardContent>
         </Card>
-
-        {/* Transfer Button */}
-        <button className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
-          Transfer
-        </button>
       </div>
     </div>
   );
@@ -579,10 +593,10 @@ ProfilePage.getLayout = function getLayout(page) {
   return <UserLayout>{page}</UserLayout>;
 };
 
-// Wrap ProfilePage with AuthGuard
-const WrappedProfilePage = AuthGuard(ProfilePage, { allowedRoles: ["user"] });
+// Wrap CheckoutPage with AuthGuard
+const WrappedCheckoutPage = AuthGuard(ProfilePage, { allowedRoles: ["user"] });
 
-// Ensure `getLayout` is preserved
-WrappedProfilePage.getLayout = ProfilePage.getLayout;
+// Ensure `getLayout` is passed along to the wrapped component
+WrappedCheckoutPage.getLayout = ProfilePage.getLayout;
 
-export default WrappedProfilePage;
+export default WrappedCheckoutPage;
