@@ -263,7 +263,7 @@ function MyListingsPage() {
         onSubmit={handleEditSubmit}
       />
       <AlertDialog open={confirmationDialog.isOpen} onOpenChange={closeConfirmationDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Refund Action</AlertDialogTitle>
             <AlertDialogDescription>
