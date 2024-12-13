@@ -38,7 +38,7 @@ const UnauthorizedPage = () => {
               <AlertTriangle className="h-16 w-16 text-orange-500 mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-4 text-gray-800">Access Denied</h2>
               <p className="text-gray-600 mb-4">
-                We're sorry, but you don't have permission to access this page. 
+                We are sorry  but you don't have permission to access this page
                 This area may be restricted to certain users or require additional authentication.
               </p>
             </CardContent>

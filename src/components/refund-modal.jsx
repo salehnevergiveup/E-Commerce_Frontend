@@ -145,7 +145,7 @@ export function RefundModal({
 
           {/* Refund Information */}
           <div className="text-center p-4 bg-red-50 rounded-lg">
-            <p className="text-red-600 font-semibold">We're sorry for your bad experience</p>
+            <p className="text-red-600 font-semibold">We are sorry for your bad experience</p>
             <p className="text-sm text-red-500">Please let us know what went wrong</p>
           </div>
 

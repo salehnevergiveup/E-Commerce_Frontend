@@ -18,7 +18,7 @@ const CancelRefundConfirmationDialog = ({ isOpen, onClose, onConfirm, itemName }
         <AlertDialogHeader>
           <AlertDialogTitle className="text-orange-600">Confirm Cancel Refund Request</AlertDialogTitle>
           <AlertDialogDescription className="text-gray-600">
-            Are you sure you want to cancel the refund request for "{itemName}"? This action cannot be undone.
+            Are you sure you want to cancel the refund request for {itemName} ? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
