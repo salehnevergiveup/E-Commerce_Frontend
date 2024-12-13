@@ -19,7 +19,7 @@ import {
   subscribeToEvent,
   stopConnection,
 } from "@/services/websocket/websocket-service";
-
+import { ReviewCard } from "@/components/review-card";
 import {
   Pencil,
   Phone,
