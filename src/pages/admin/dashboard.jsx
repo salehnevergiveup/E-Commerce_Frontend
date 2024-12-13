@@ -140,11 +140,10 @@ export default function Dashboard() {
     setLoading((prev) => ({ ...prev, sales: true }));
     setError((prev) => ({ ...prev, sales: null }));
     try {
-      const payload = { timeFrame };
       const response = await sendRequest(
         RequestMethods.POST,
         `/report/sales`,
-        payload,
+        null,
         true
       );
       console.log("Sales data fetched: ", response.data);
@@ -152,7 +151,10 @@ export default function Dashboard() {
         setSalesData(response.data);
         setTotalSalesData(response.data);
       } else {
-        console.warn("Expected sales data to be an array, but got:", response.data);
+        console.warn(
+          "Expected sales data to be an array, but got:",
+          response.data
+        );
         setSalesData([]);
         setTotalSalesData([]);
       }
@@ -195,7 +197,10 @@ export default function Dashboard() {
       if (Array.isArray(response.data)) {
         setTransactionsData(response.data);
       } else {
-        console.warn("Expected transactions data to be an array, but got:", response.data);
+        console.warn(
+          "Expected transactions data to be an array, but got:",
+          response.data
+        );
         setTransactionsData([]);
       }
     } catch (err) {
@@ -225,7 +230,10 @@ export default function Dashboard() {
       if (Array.isArray(response.data)) {
         setTotalRevenueData(response.data);
       } else {
-        console.warn("Expected revenue data to be an array, but got:", response.data);
+        console.warn(
+          "Expected revenue data to be an array, but got:",
+          response.data
+        );
         setTotalRevenueData([]);
       }
 
@@ -266,7 +274,10 @@ export default function Dashboard() {
       if (Array.isArray(response.data)) {
         setUsersData(response.data);
       } else {
-        console.warn("Expected users data to be an array, but got:", response.data);
+        console.warn(
+          "Expected users data to be an array, but got:",
+          response.data
+        );
         setUsersData([]);
       }
     } catch (err) {
@@ -296,7 +307,10 @@ export default function Dashboard() {
       if (Array.isArray(response.data)) {
         setProductsData(response.data);
       } else {
-        console.warn("Expected products data to be an array, but got:", response.data);
+        console.warn(
+          "Expected products data to be an array, but got:",
+          response.data
+        );
         setProductsData([]);
       }
     } catch (err) {
@@ -319,7 +333,6 @@ export default function Dashboard() {
         payload,
         true
       );
-
     } catch (err) {
       console.error("Error fetching review data:", err);
       setError((prev) => ({
@@ -330,7 +343,7 @@ export default function Dashboard() {
     } finally {
       setLoading((prev) => ({ ...prev, review: false }));
     }
-  }
+  };
   // Added Fetch Function for Review Report
   const fetchReviewData = async (timeFrame) => {
     setLoading((prev) => ({ ...prev, review: true }));
@@ -347,7 +360,10 @@ export default function Dashboard() {
       if (Array?.isArray(response.data)) {
         setReviewData(response.data);
       } else {
-        console.warn("Expected review data to be an array, but got:", response.data);
+        console.warn(
+          "Expected review data to be an array, but got:",
+          response.data
+        );
         setReviewData([]);
       }
     } catch (err) {
@@ -461,7 +477,7 @@ export default function Dashboard() {
       {/* Enhanced Welcome Card */}
       <div className="grid gap-6 md:grid-cols-2">
         {totalSalesTrend && (
-          <Card >
+          <Card>
             <CardContent className="flex items-center gap-4 p-6">
               <div className="flex-1">
                 <h2 className="text-2xl font-bold">
@@ -490,10 +506,8 @@ export default function Dashboard() {
                           .current -
                           getCurrentAndPrevious(salesData, "totalSalesAmount")
                             .previous) /
-                          getCurrentAndPrevious(
-                            salesData,
-                            "totalSalesAmount"
-                          ).previous) *
+                          getCurrentAndPrevious(salesData, "totalSalesAmount")
+                            .previous) *
                         100
                       ).toFixed(2)}
                       % from last month
@@ -506,15 +520,20 @@ export default function Dashboard() {
                     )}
                   </div>
                   {/* Create Button */}
-                  <Button className="bg-orange-500 hover:bg-orange-600 text-white mt-5"
-                  onClick={handleJobRequest} 
+                  <Button
+                    className="bg-orange-500 hover:bg-orange-600 text-white mt-5"
+                    onClick={handleJobRequest}
                   >
-                    Schedule Paymnets <DollarSign/>
+                    Schedule Payments <DollarSign />
                   </Button>
                 </div>
               </div>
               <div className="hidden md:block">
-                <Trophy className={`h-24 w-24 ${totalSalesTrend === "up" ? "text-green-500" : "text-red-500"}`} />
+                <Trophy
+                  className={`h-24 w-24 ${
+                    totalSalesTrend === "up" ? "text-green-500" : "text-red-500"
+                  }`}
+                />
               </div>
             </CardContent>
           </Card>
@@ -554,14 +573,18 @@ export default function Dashboard() {
                     <div className="flex items-center space-x-4">
                       <span className="text-5xl">😊</span>
                       <div className="flex flex-col items-start">
-                        <span className="text-xl font-bold">{totalGoodReviews}</span>
+                        <span className="text-xl font-bold">
+                          {totalGoodReviews}
+                        </span>
                         <span className="text-sm">Good Reviews</span>
                       </div>
                     </div>
                     <div className="flex items-center space-x-4">
                       <span className="text-5xl">😞</span>
                       <div className="flex flex-col items-start">
-                        <span className="text-xl font-bold">{totalBadReviews}</span>
+                        <span className="text-xl font-bold">
+                          {totalBadReviews}
+                        </span>
                         <span className="text-sm">Bad Reviews</span>
                       </div>
                     </div>
@@ -658,7 +681,8 @@ export default function Dashboard() {
               <p>Loading...</p>
             ) : error.revenue ? (
               <p className="text-red-500">{error.revenue}</p>
-            ) : Array.isArray(totalRevenueData) && totalRevenueData.length > 0 ? (
+            ) : Array.isArray(totalRevenueData) &&
+              totalRevenueData.length > 0 ? (
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={totalRevenueData}>
@@ -682,7 +706,6 @@ export default function Dashboard() {
         </Card>
       </div>
       <div className="grid gap-6 md:grid-cols-2">
-
         {/* Performance Chart */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -690,9 +713,9 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {loading.sales ||
-              loading.revenue ||
-              loading.transactions ||
-              loading.review ? (
+            loading.revenue ||
+            loading.transactions ||
+            loading.review ? (
               <p>Loading...</p>
             ) : error.sales ||
               error.revenue ||
@@ -734,7 +757,9 @@ export default function Dashboard() {
         {/* Users by Status Widget */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Users by Status</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Users by Status
+            </CardTitle>
             <Select
               value={usersTimeFrame}
               onValueChange={(value) => handleTimeFrameChange("users", value)}
@@ -770,7 +795,10 @@ export default function Dashboard() {
                       label
                     >
                       {usersData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
                       ))}
                     </Pie>
                     <Tooltip />
@@ -788,7 +816,9 @@ export default function Dashboard() {
       {/* Products by Category */}
       <Card className="w-full">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Products by Category</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            Products by Category
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {loading.products ? (
