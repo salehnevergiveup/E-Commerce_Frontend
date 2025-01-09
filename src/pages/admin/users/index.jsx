@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import AdminLayout from "@/layouts/admin-layout";
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'react-toastify';
-import { sendRequest, sendRequestTest } from '@/services/requests/request-service';
+import { sendRequest } from '@/services/requests/request-service';
 import Roles from "@/enums/users";
 import RequestMethods from "@/enums/request-methods";
 import S3MediaFacade from '@/services/mediaService/handle-media';

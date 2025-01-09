@@ -140,11 +140,10 @@ export default function Dashboard() {
     setLoading((prev) => ({ ...prev, sales: true }));
     setError((prev) => ({ ...prev, sales: null }));
     try {
-      const payload = { timeFrame };
       const response = await sendRequest(
         RequestMethods.POST,
         `/report/sales`,
-        payload,
+        null,
         true
       );
       console.log("Sales data fetched: ", response.data);
