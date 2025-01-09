@@ -24,106 +24,144 @@ export default function NotificationsDropdown({ isAuthenticated }) {
   const router = useRouter();
 
   useEffect(() => {
+    console.log("Component mounted. Is authenticated:", isAuthenticated);
     if (isAuthenticated) {
       const connection = getOrCreateConnection("notificationHub");
 
       if (connection) {
+        console.log("WebSocket connection established.");
+
         // Subscribe to batch notifications
         subscribeToEvent(
           "notificationHub",
           "ReceiveListofLatestNotification",
-          (lastestNotifications) => {
-            console.log("Event triggered: ReceiveListofLatestNotification");
-            console.log("Latest notifications received:", lastestNotifications);
-            // Filter out null or undefined notifications
-            const validNotifications = lastestNotifications.filter(
-              (notification) =>
-                notification !== null && notification !== undefined
-            );
-
-            validNotifications.forEach((notification, index) => {
-              console.log(`Notification ${index + 1}:`, notification);
-            });
-
-            const processedNotifications = validNotifications.map(
-              (notification) => ({
+          (latestNotifications) => {
+            console.log("Received batch notifications:", latestNotifications);
+            const processedNotifications = latestNotifications
+              .filter((notification) => notification)
+              .map((notification) => ({
                 id: notification.notificationId,
                 title: notification.title,
                 messageText: notification.messageText,
+                createdAt: notification.createdAt,
                 updatedAt: notification.updatedAt,
-                isRead: notification.isRead,
+                isRead:
+                  notification.isRead ??
+                  (notification.status === "notRead" ? false : true),
                 sender: notification.senderUsername,
-              })
-            );
+                status: notification.status,
+                type: notification.type,
+              }));
 
-            setNotifications(
-              () => processedNotifications.slice(0, 5) // Ensure only 5 latest notifications
-            );
-            console.log(
-              "Updated notifications state:",
-              processedNotifications.slice(0, 5)
-            );
+            setNotifications(() => {
+              console.log(
+                "Setting notifications (batch):",
+                processedNotifications
+              );
+              return processedNotifications.slice(0, 5);
+            });
           }
         );
 
-        // Subscribe to the "ReceiveNotification" event for individual notifications
+        // Subscribe to individual notifications
+        const handleNewNotificationBatch = (newNotifications) => {
+          console.log(
+            "Debug: Raw new notifications received:",
+            newNotifications
+          );
+
+          if (newNotifications && newNotifications.length > 0) {
+            console.log("Received new notifications:", newNotifications);
+
+            const processedNewNotifications = newNotifications
+              .filter((notification) => notification)
+              .map((notification) => {
+                console.log("Debug: Processing notification:", {
+                  notificationId: notification.notificationId,
+                  title: notification.title,
+                  messageText: notification.messageText,
+                  createdAt: notification.createdAt,
+                  updatedAt: notification.updatedAt,
+                  senderUsername: notification.senderUsername,
+                });
+
+                return {
+                  id: notification.notificationId || 0,
+                  title: notification.title || notification.type || "No Title",
+                  messageText: notification.messageText || "No Content",
+                  createdAt: notification.createdAt || new Date().toISOString(),
+                  updatedAt: notification.updatedAt || null,
+                  isRead:
+                    notification.isRead ??
+                    (notification.status === "notRead" ? false : true),
+                  sender: notification.senderUsername || "Unknown Sender",
+                  status: notification.status || "unknown",
+                  type: notification.type || "unknown",
+                };
+              });
+
+            console.log(
+              "Debug: Processed new notifications:",
+              processedNewNotifications
+            );
+
+            setNotifications((prevNotifications) => {
+              const updatedNotifications = [
+                ...processedNewNotifications,
+                ...prevNotifications.filter(
+                  (prevNotification) =>
+                    !processedNewNotifications.some(
+                      (newNotification) =>
+                        newNotification.id === prevNotification.id
+                    )
+                ),
+              ];
+              console.log(
+                "Setting notifications (individual):",
+                updatedNotifications
+              );
+              return updatedNotifications.slice(0, 5);
+            });
+          }
+        };
+
         subscribeToEvent(
           "notificationHub",
           "ReceiveNotification",
-          (notification) => {
-            if (notification) {
-              // Ensure notification is valid
-              const newNotification = {
-                id: notification.notificationId,
-                title: notification.title,
-                messageText: notification.messageText,
-                updatedAt: notification.updatedAt,
-                isRead: notification.isRead,
-                sender: notification.senderUsername,
-              };
-              console.log("New notification received:", notification);
+          (notifications) => handleNewNotificationBatch([notifications])
+        );
 
-              // Add the new notification and trim the list to 5
-              setNotifications((prevNotifications) => {
-                const updatedNotifications = [
-                  newNotification,
-                  ...prevNotifications,
-                ];
-                return updatedNotifications.slice(0, 5); // Ensure only 5 latest notifications
-              });
-            }
-          }
+        subscribeToEvent(
+          "notificationHub",
+          "ReceivePurchasedNotification",
+          (notifications) => handleNewNotificationBatch([notifications])
         );
       }
 
       return () => {
         if (connection) {
+          console.log("Stopping WebSocket connection.");
           stopConnection("notificationHub");
         }
       };
     }
   }, [isAuthenticated]);
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  console.log("Calculating unreadCount. Notifications state:", notifications);
+  const unreadCount = notifications.filter((n) => {
+    console.log(
+      `Notification ID ${n.id}: isRead = ${n.isRead}, status = ${n.status}`
+    );
+    return !n.isRead || n.status === "notRead";
+  }).length;
+  console.log("Updated unreadCount:", unreadCount);
 
-  const markAllAsRead = async () => {
-    try {
-      const response = await sendRequest(
-        RequestMethods.PUT,
-        `/notifications/users/update_notifications`,
-        null,
-        true
-      );
+  useEffect(() => {
+    console.log("Notifications state updated:", notifications);
+    console.log("Unread count recalculated:", unreadCount);
+  }, [notifications]);
 
-      if (response.success) {
-        console.log("Marked as read successfully");
-      } else {
-        console.error("Failed to mark as read:", response);
-      }
-    } catch (error) {
-      console.error("Error marking as read:", error);
-    }
-  };
+  console.log("Rendering NotificationsDropdown. Unread count:", unreadCount);
 
   return (
     <DropdownMenu>
@@ -137,11 +175,7 @@ export default function NotificationsDropdown({ isAuthenticated }) {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="bg-white dark:bg-gray-900"
-        style={{ minWidth: "auto", maxWidth: "none", width: "auto" }}
-      >
+      <DropdownMenuContent align="end" className="bg-white dark:bg-gray-900">
         <DropdownMenuLabel className="text-gray-900 dark:text-white">
           Notifications
         </DropdownMenuLabel>
@@ -151,7 +185,9 @@ export default function NotificationsDropdown({ isAuthenticated }) {
             <React.Fragment key={index}>
               <DropdownMenuItem
                 className={`text-gray-700 dark:text-gray-200 ${
-                  notification.isRead ? "bg-white" : "bg-orange-100"
+                  notification.isRead || notification.status === "Read"
+                    ? "bg-white"
+                    : "bg-orange-100"
                 } hover:bg-gray-100`}
                 onClick={() => {
                   router.push("/user/profile?tab=notifications");
@@ -159,22 +195,18 @@ export default function NotificationsDropdown({ isAuthenticated }) {
               >
                 <div className="flex flex-col w-full">
                   <div className="flex justify-between items-start w-full">
-                    {/* Title on the left */}
                     <strong className="text-base truncate mr-10">
                       {notification.title}
                     </strong>
-
-                    {/* UpdatedAt and Sent By on the right */}
                     <div className="flex flex-col items-end ml-auto text-xs text-gray-500">
                       <span className="whitespace-nowrap">
-                        {new Date(notification.updatedAt).toLocaleString()}
+                        {new Date(notification.createdAt).toLocaleString()}
                       </span>
                       <span className="text-[10px] italic">
                         Sent By: {notification.sender}
                       </span>
                     </div>
                   </div>
-                  {/* Message Text Aligned Left */}
                   <span className="text-sm text-gray-600 dark:text-gray-300 mt-2 text-left">
                     {notification.messageText.length > 55
                       ? `${notification.messageText.slice(0, 55)}...`

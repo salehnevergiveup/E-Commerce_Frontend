@@ -19,7 +19,7 @@ import {
   subscribeToEvent,
   stopConnection,
 } from "@/services/websocket/websocket-service";
-import ReviewCard from "@/components/review-card";
+import { ReviewCard } from "@/components/review-card";
 import {
   Pencil,
   Phone,
@@ -87,7 +87,7 @@ function ProfilePage() {
       );
       if (response.success) {
         setNotifications(response.data); // Update the notifications state
-        console.log("test test test" + response);
+        console.log("test test test", JSON.stringify(response, null, 2));
       } else {
         console.error("Failed to fetch notifications:", response.message);
         console.log("test test test" + JSON.stringify(response));
@@ -455,7 +455,10 @@ function ProfilePage() {
                       <Card
                         key={notification.notificationId}
                         className={`border ${
-                          notification.isRead ? "bg-gray-50" : "bg-orange-100"
+                          notification.isRead ??
+                          (notification.status === "notRead" ? false : true)
+                            ? "bg-gray-50"
+                            : "bg-orange-100"
                         }`}
                       >
                         <CardHeader>
@@ -570,11 +573,6 @@ function ProfilePage() {
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-orange-600" />
               <span>
-                {userDetails.createdAt
-                  ? `Joined ${new Date(
-                      userDetails.createdAt
-                    ).toLocaleDateString()}`
-                  : "No Join Date"}
                 {userDetails.createdAt
                   ? `Joined ${new Date(
                       userDetails.createdAt
