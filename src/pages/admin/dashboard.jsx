@@ -327,7 +327,6 @@ export default function Dashboard() {
   };
   const handleJobRequest = async () => {
     try {
-      //const payload = { timeFrame };
       await sendRequest(
         RequestMethods.POST,
         `/buyer-item/make-pay-to-user`,
