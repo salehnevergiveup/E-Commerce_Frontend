@@ -92,7 +92,7 @@ export default function Header() {
                       href="/listing/my-listing"
                       className="flex items-center"
                     >
-                      <User className="h-5 w-5" />
+                      <User className="mr-4 h-4 w-4" />
                       <span>My Listings</span>
                     </Link>
                   </DropdownMenuItem>

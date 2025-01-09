@@ -134,7 +134,7 @@ const NotificationsDashboard = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
 
-              <Select
+              {/* <Select
                 value={selectedUsername}
                 onValueChange={setselectedUsername}
               >
@@ -144,9 +144,9 @@ const NotificationsDashboard = () => {
                 <SelectContent>
                   <SelectItem value={null}>All Roles</SelectItem>
                   <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="User">User</SelectItem>
+                  <SelectItem value="User">System</SelectItem>
                 </SelectContent>
-              </Select>
+              </Select> */}
 
               <div className="flex items-center space-x-2">
                 <Input
