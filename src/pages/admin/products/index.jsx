@@ -133,14 +133,11 @@ export default function AdminProducts() {
                 await S3MediaFacade.deleteMedias(mediaUrls);
             }
 
-            const payload = {
-                productId: product.productId,
-            };
 
             const deleteResponse = await sendRequest(
                 RequestMethods.DELETE,
-                `/product/delete-product`,
-                payload,
+                `/product/delete-product?productId=`+product.productId,
+                null,
                 true // Assuming authentication is required
             );
 

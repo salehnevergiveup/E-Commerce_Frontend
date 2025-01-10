@@ -255,8 +255,8 @@ export default function EditUser() {
           url: existingMedia.mediaUrl,
         }];
 
-        const updateResponse = await S3MediaFacade.updateMedias(user.medias, updateMediaArray );
- 
+        const updateResponse = await S3MediaFacade.updateMedias(user.medias, updateMediaArray);
+
         if (updateResponse && updateResponse.updatedMediaArray) {
           // Update the media in the state
           setUser(prevUser => ({
@@ -308,7 +308,17 @@ export default function EditUser() {
 
       await S3MediaFacade.deleteMedias([mediaToDelete.mediaUrl]);
 
-      const updatedMedias = user.medias.map(media => media.type == type ? { ...media, mediaUrl: "" } : media);
+
+      let updatedMedias = user.medias.forEach(media => {
+        if (media.type == type) {
+          media.mediaUrl = "";
+          media.type = type;
+        }
+      });
+
+      await sendUserUpdate(updatedMedias);
+
+      updatedMedias = user.medias.filter(media => media.type !== type);
 
       setUser(prevUser => ({
         ...prevUser,
@@ -317,7 +327,6 @@ export default function EditUser() {
 
       toast.success(`${type.replace('_', ' ')} deleted successfully.`);
 
-      await sendUserUpdate(updatedMedias);
     } catch (error) {
       console.error(`Error deleting ${type}:`, error);
       toast.error(`Error deleting ${type}.`);

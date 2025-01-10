@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.709.0",
+    "@aws-sdk/client-s3": "^3.726.0",
     "@googlemaps/js-api-loader": "^1.16.8",
     "@hookform/resolvers": "^3.9.1",
     "@microsoft/signalr": "^8.0.7",
@@ -35,7 +35,6 @@
     "@stripe/stripe-js": "^5.2.0",
     "autoprefix": "^1.0.1",
     "autoprefixer": "^10.4.20",
-    "aws-sdk": "^2.1692.0",
     "axios": "^1.7.7",
     "chart.js": "^4.4.6",
     "class-variance-authority": "^0.7.0",

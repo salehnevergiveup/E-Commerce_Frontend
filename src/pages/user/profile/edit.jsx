@@ -271,16 +271,24 @@ function EditProfilePage() {
 
       await S3MediaFacade.deleteMedias([mediaToDelete.mediaUrl]);
 
-      const updatedMedias = user.medias.filter(media => media.type !== type);
+      let updatedMedias = user.medias.forEach(media => {
+        if (media.type == type) {
+          media.mediaUrl = "";
+          media.type = type;
+        }
+      });
+
+      toast.success(`${type.replace('_', ' ')} deleted successfully.`);
+
+      await sendUserUpdate(updatedMedias);
+
+      updatedMedias = user.medias.filter(media => media.type !== type);
 
       setUser(prevUser => ({
         ...prevUser,
         medias: updatedMedias,
       }));
 
-      toast.success(`${type.replace('_', ' ')} deleted successfully.`);
-
-      await sendUserUpdate(updatedMedias);
     } catch (error) {
       console.error(`Error deleting ${type}:`, error);
       toast.error(`Error deleting ${type}.`);
