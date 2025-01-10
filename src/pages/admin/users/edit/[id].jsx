@@ -271,11 +271,6 @@ export default function EditUser() {
           updateMediaArray
         );
 
-        const updateResponse = await S3MediaFacade.updateMedias(
-          user.medias,
-          updateMediaArray
-        );
-
         if (updateResponse && updateResponse.updatedMediaArray) {
           // Update the media in the state
           setUser((prevUser) => ({
