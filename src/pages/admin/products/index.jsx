@@ -144,7 +144,7 @@ export default function AdminProducts() {
       const deleteResponse = await sendRequest(
         RequestMethods.DELETE,
         `/product/delete-product?productId=` + product.productId,
-        false,
+        null,
         true // Assuming authentication is required
       );
 

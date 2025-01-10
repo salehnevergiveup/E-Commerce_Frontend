@@ -283,6 +283,8 @@ function EditProfilePage() {
         }
       });
 
+      toast.success(`${type.replace("_", " ")} deleted successfully.`);
+
       await sendUserUpdate(updatedMedias);
 
       updatedMedias = user.medias.filter((media) => media.type !== type);
@@ -291,8 +293,6 @@ function EditProfilePage() {
         ...prevUser,
         medias: updatedMedias,
       }));
-
-      toast.success(`${type.replace("_", " ")} deleted successfully.`);
     } catch (error) {
       console.error(`Error deleting ${type}:`, error);
       toast.error(`Error deleting ${type}.`);
